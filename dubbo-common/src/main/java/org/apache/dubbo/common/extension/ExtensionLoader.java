@@ -170,8 +170,12 @@ public class ExtensionLoader<T> {
      * @since 2.7.7
      */
     private static LoadingStrategy[] loadLoadingStrategies() {
-        return stream(load(LoadingStrategy.class).spliterator(), false).sorted()
+        // ServiceLoader JAVA SPI
+        // META-INF/services/org.apache.dubbo.common.extension.LoadingStrategy
+        LoadingStrategy[] array = stream(load(LoadingStrategy.class).spliterator(), false)
+            .sorted()
             .toArray(LoadingStrategy[]::new);
+        return array;
     }
 
     /**
@@ -727,11 +731,16 @@ public class ExtensionLoader<T> {
         }
     }
 
+    /**
+     * 加载自适应扩展类
+     * @return
+     */
     @SuppressWarnings("unchecked")
     public T getAdaptiveExtension() {
         checkDestroyed();
         Object instance = cachedAdaptiveInstance.get();
         if (instance == null) {
+            // 如果存在异常，则直接抛出
             if (createAdaptiveInstanceError != null) {
                 throw new IllegalStateException(
                     "Failed to create adaptive instance: " + createAdaptiveInstanceError.toString(),
@@ -740,8 +749,11 @@ public class ExtensionLoader<T> {
 
             synchronized (cachedAdaptiveInstance) {
                 instance = cachedAdaptiveInstance.get();
+                // double check
                 if (instance == null) {
                     try {
+                        // 创建自适应拓展
+                        // 这里分为两种情况：一种是存在 Adaptive 类，另一个是需要生成 Adaptive 类
                         instance = createAdaptiveExtension();
                         cachedAdaptiveInstance.set(instance);
                     } catch (Throwable t) {
@@ -791,9 +803,12 @@ public class ExtensionLoader<T> {
         try {
             T instance = (T) extensionInstances.get(clazz);
             if (instance == null) {
+                // 拓展对象实例化
                 extensionInstances.putIfAbsent(clazz, createExtensionInstance(clazz));
                 instance = (T) extensionInstances.get(clazz);
                 instance = postProcessBeforeInitialization(instance, name);
+                // Dubbo IOC
+                // 依赖注入
                 injectExtension(instance);
                 instance = postProcessAfterInitialization(instance, name);
             }
@@ -868,7 +883,9 @@ public class ExtensionLoader<T> {
         }
 
         try {
+            // 遍历目标类的所有方法
             for (Method method : instance.getClass().getMethods()) {
+                // 检测方法是否以 set 开头，且方法仅有一个参数，且方法访问级别为 public
                 if (!isSetter(method)) {
                     continue;
                 }
@@ -891,14 +908,18 @@ public class ExtensionLoader<T> {
                 }
 
                 Class<?> pt = method.getParameterTypes()[0];
+                // 基本类型不注入
                 if (ReflectUtils.isPrimitives(pt)) {
                     continue;
                 }
 
                 try {
+                    // 获取属性名，比如 setName 方法对应属性名 name
                     String property = getSetterProperty(method);
+                    // 获取依赖对象
                     Object object = injector.getInstance(pt, property);
                     if (object != null) {
+                        // 注入
                         method.invoke(instance, object);
                     }
                 } catch (Exception e) {
@@ -989,6 +1010,8 @@ public class ExtensionLoader<T> {
 
         Map<String, Class<?>> extensionClasses = new HashMap<>();
 
+        // 基于策略来加载指定文件夹下的文件
+        // 目前有四种策略，分别读取 META-INF/services/ META-INF/dubbo/ META-INF/dubbo/internal/ META-INF/dubbo/external/ 这四个目录下的配置文件
         for (LoadingStrategy strategy : strategies) {
             loadDirectory(extensionClasses, strategy, type.getName());
 
@@ -1005,6 +1028,7 @@ public class ExtensionLoader<T> {
                                String type) throws InterruptedException {
         loadDirectoryInternal(extensionClasses, strategy, type);
         try {
+            // 兼容性代码：支持旧 com.alibaba 类的扩展
             String oldType = type.replace("org.apache", "com.alibaba");
             if (oldType.equals(type)) {
                 return;
@@ -1043,6 +1067,8 @@ public class ExtensionLoader<T> {
     private void loadDirectoryInternal(Map<String, Class<?>> extensionClasses,
                                        LoadingStrategy loadingStrategy, String type)
         throws InterruptedException {
+        // fileName = 文件夹路径 + type 全限定名
+        // 文件夹路径在加载策略实现中定义好的
         String fileName = loadingStrategy.directory() + type;
         try {
             List<ClassLoader> classLoadersToLoad = new LinkedList<>();
@@ -1112,6 +1138,16 @@ public class ExtensionLoader<T> {
         }
     }
 
+    /**
+     * loadResource 方法用于读取和解析配置文件，并通过反射加载类，最后调用 loadClass 方法进行其他操作。
+     * @param extensionClasses
+     * @param classLoader
+     * @param resourceURL
+     * @param overridden
+     * @param includedPackages
+     * @param excludedPackages
+     * @param onlyExtensionClassLoaderPackages
+     */
     private void loadResource(Map<String, Class<?>> extensionClasses, ClassLoader classLoader,
                               java.net.URL resourceURL, boolean overridden,
                               String[] includedPackages, String[] excludedPackages,
@@ -1122,6 +1158,7 @@ public class ExtensionLoader<T> {
             for (String line : newContentList) {
                 try {
                     String name = null;
+                    // 以等于号 = 为界，截取键与值
                     int i = line.indexOf('=');
                     if (i > 0) {
                         name = line.substring(0, i).trim();
@@ -1129,11 +1166,12 @@ public class ExtensionLoader<T> {
                     } else {
                         clazz = line;
                     }
+                    // 加载类，并通过 loadClass 方法对类进行缓存
                     if (StringUtils.isNotEmpty(clazz) && !isExcluded(clazz,
                         excludedPackages) && isIncluded(clazz,
                         includedPackages) && !isExcludedByClassLoader(clazz, classLoader,
                         onlyExtensionClassLoaderPackages)) {
-
+                        // loadClass 方法用于主要用于操作缓存
                         loadClass(classLoader, extensionClasses, resourceURL,
                             Class.forName(clazz, true, classLoader), name, overridden);
                     }
@@ -1168,8 +1206,11 @@ public class ExtensionLoader<T> {
             try (BufferedReader reader = new BufferedReader(
                 new InputStreamReader(resourceURL.openStream(), StandardCharsets.UTF_8))) {
                 String line;
+                // 按行读取配置内容
                 while ((line = reader.readLine()) != null) {
+                    // 定位 # 字符
                     final int ci = line.indexOf('#');
+                    // 截取 # 之前的字符串，# 之后的内容为注释，需要忽略
                     if (ci >= 0) {
                         line = line.substring(0, ci);
                     }
@@ -1225,6 +1266,15 @@ public class ExtensionLoader<T> {
         return false;
     }
 
+    /**
+     * loadClass 方法用于主要用于操作缓存
+     * @param classLoader 拓展类加载器
+     * @param extensionClasses 拓展缓存：扩展键 -> 拓展 Class 实例
+     * @param resourceURL 拓展资源文件 URL
+     * @param clazz 拓展 Class 实例（即拓展实现类对应的 Class 对象实例）
+     * @param name 拓展键（即别名）
+     * @param overridden 若存在是否覆盖
+     */
     private void loadClass(ClassLoader classLoader, Map<String, Class<?>> extensionClasses,
                            java.net.URL resourceURL, Class<?> clazz, String name,
                            boolean overridden) {
@@ -1232,16 +1282,21 @@ public class ExtensionLoader<T> {
             throw new IllegalStateException(
                 "Error occurred when loading extension class (interface: " + type + ", class line: " + clazz.getName() + "), class " + clazz.getName() + " is not subtype of interface.");
         }
-
+        // 当前 clazz 是否激活。
+        // 在Apache Dubbo中，@Activate是一个扩展点自动激活机制的注解，用于标记扩展点实现类，并指定该实现类在特定条件下被自动激活
         boolean isActive = loadClassIfActive(classLoader, clazz);
 
         if (!isActive) {
             return;
         }
-
+        // 检测目标类上是否有 Adaptive 注解
+        // @Adaptive注解通常用于这些扩展点的自适应实现类上。当Dubbo框架在使用某个扩展点时，会根据运行时的条件动态地选择合适的实现类。
+        // 在Dubbo中，如果一个扩展点的实现类标记了@Adaptive注解，那么Dubbo会生成一个适配器类，通过该适配器类来调用具体的实现类。这样，Dubbo就可以根据条件选择合适的实现类，而不是在编译时确定。
+        // 通常，@Adaptive注解会与@SPI注解一起使用，@SPI用于标记扩展点的默认实现类，而@Adaptive用于标记自适应实现类。Dubbo框架会自动生成适配器类，根据运行时的条件动态地选择具体的实现类。
         if (clazz.isAnnotationPresent(Adaptive.class)) {
             cacheAdaptiveClass(clazz, overridden);
         } else if (isWrapperClass(clazz)) {
+            // 缓存包装类
             cacheWrapperClass(clazz);
         } else {
             if (StringUtils.isEmpty(name)) {
@@ -1254,6 +1309,7 @@ public class ExtensionLoader<T> {
 
             String[] names = NAME_SEPARATOR.split(name);
             if (ArrayUtils.isNotEmpty(names)) {
+                // cache Activate class which is annotated with Activate
                 cacheActivateClass(clazz, names[0]);
                 for (String n : names) {
                     cacheName(clazz, n);
