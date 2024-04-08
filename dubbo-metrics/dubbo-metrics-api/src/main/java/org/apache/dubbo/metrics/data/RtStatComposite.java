@@ -14,7 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.dubbo.metrics.data;
 
 import org.apache.dubbo.metrics.model.MethodMetric;
@@ -51,13 +50,11 @@ import java.util.stream.Collectors;
  */
 @SuppressWarnings({"rawtypes", "unchecked"})
 public class RtStatComposite extends AbstractMetricsExport {
-    private boolean serviceLevel;
 
     private final AtomicBoolean samplesChanged = new AtomicBoolean(true);
 
     public RtStatComposite(ApplicationModel applicationModel) {
         super(applicationModel);
-        this.serviceLevel = MethodMetric.isServiceLevel(getApplicationModel());
     }
 
     private final Map<String, List<LongContainer<? extends Number>>> rtStats = new ConcurrentHashMap<>();
@@ -69,7 +66,8 @@ public class RtStatComposite extends AbstractMetricsExport {
         for (MetricsPlaceValue placeValue : placeValues) {
             List<LongContainer<? extends Number>> containers = initStats(placeValue);
             for (LongContainer<? extends Number> container : containers) {
-                rtStats.computeIfAbsent(container.getMetricsKeyWrapper().getType(), k -> new ArrayList<>()).add(container);
+                rtStats.computeIfAbsent(container.getMetricsKeyWrapper().getType(), k -> new ArrayList<>())
+                        .add(container);
             }
         }
         samplesChanged.set(true);
@@ -78,13 +76,24 @@ public class RtStatComposite extends AbstractMetricsExport {
     private List<LongContainer<? extends Number>> initStats(MetricsPlaceValue placeValue) {
         List<LongContainer<? extends Number>> singleRtStats = new ArrayList<>();
         singleRtStats.add(new AtomicLongContainer(new MetricsKeyWrapper(MetricsKey.METRIC_RT_LAST, placeValue)));
-        singleRtStats.add(new LongAccumulatorContainer(new MetricsKeyWrapper(MetricsKey.METRIC_RT_MIN, placeValue), new LongAccumulator(Long::min, Long.MAX_VALUE)));
-        singleRtStats.add(new LongAccumulatorContainer(new MetricsKeyWrapper(MetricsKey.METRIC_RT_MAX, placeValue), new LongAccumulator(Long::max, Long.MIN_VALUE)));
-        singleRtStats.add(new AtomicLongContainer(new MetricsKeyWrapper(MetricsKey.METRIC_RT_SUM, placeValue), (responseTime, longAccumulator) -> longAccumulator.addAndGet(responseTime)));
+        singleRtStats.add(new LongAccumulatorContainer(
+                new MetricsKeyWrapper(MetricsKey.METRIC_RT_MIN, placeValue),
+                new LongAccumulator(Long::min, Long.MAX_VALUE)));
+        singleRtStats.add(new LongAccumulatorContainer(
+                new MetricsKeyWrapper(MetricsKey.METRIC_RT_MAX, placeValue),
+                new LongAccumulator(Long::max, Long.MIN_VALUE)));
+        singleRtStats.add(new AtomicLongContainer(
+                new MetricsKeyWrapper(MetricsKey.METRIC_RT_SUM, placeValue),
+                (responseTime, longAccumulator) -> longAccumulator.addAndGet(responseTime)));
         // AvgContainer is a special counter that stores the number of times but outputs function of sum/times
-        AtomicLongContainer avgContainer = new AtomicLongContainer(new MetricsKeyWrapper(MetricsKey.METRIC_RT_AVG, placeValue), (k, v) -> v.incrementAndGet());
+        AtomicLongContainer avgContainer = new AtomicLongContainer(
+                new MetricsKeyWrapper(MetricsKey.METRIC_RT_AVG, placeValue), (k, v) -> v.incrementAndGet());
         avgContainer.setValueSupplier(applicationName -> {
-            LongContainer<? extends Number> totalContainer = rtStats.values().stream().flatMap(List::stream).filter(longContainer -> longContainer.isKeyWrapper(MetricsKey.METRIC_RT_SUM, placeValue.getType())).findFirst().get();
+            LongContainer<? extends Number> totalContainer = rtStats.values().stream()
+                    .flatMap(List::stream)
+                    .filter(longContainer -> longContainer.isKeyWrapper(MetricsKey.METRIC_RT_SUM, placeValue.getType()))
+                    .findFirst()
+                    .get();
             AtomicLong totalRtTimes = avgContainer.get(applicationName);
             AtomicLong totalRtSum = (AtomicLong) totalContainer.get(applicationName);
             return totalRtSum.get() / totalRtTimes.get();
@@ -108,7 +117,8 @@ public class RtStatComposite extends AbstractMetricsExport {
     public void calcServiceKeyRt(Invocation invocation, String registryOpType, Long responseTime) {
         List<Action> actions;
         if (invocation.getServiceModel() != null && invocation.getServiceModel().getServiceKey() != null) {
-            Map<String, Object> attributeMap = invocation.getServiceModel().getServiceMetadata().getAttributeMap();
+            Map<String, Object> attributeMap =
+                    invocation.getServiceModel().getServiceMetadata().getAttributeMap();
             Map<String, List<Action>> cache = (Map<String, List<Action>>) attributeMap.get("ServiceKeyRt");
             if (cache == null) {
                 attributeMap.putIfAbsent("ServiceKeyRt", new ConcurrentHashMap<>(32));
@@ -150,8 +160,11 @@ public class RtStatComposite extends AbstractMetricsExport {
     public void calcMethodKeyRt(Invocation invocation, String registryOpType, Long responseTime) {
         List<Action> actions;
 
-        if (invocation.getServiceModel() != null && invocation.getServiceModel().getServiceMetadata() != null) {
-            Map<String, Object> attributeMap = invocation.getServiceModel().getServiceMetadata().getAttributeMap();
+        if (getServiceLevel()
+                && invocation.getServiceModel() != null
+                && invocation.getServiceModel().getServiceMetadata() != null) {
+            Map<String, Object> attributeMap =
+                    invocation.getServiceModel().getServiceMetadata().getAttributeMap();
             Map<String, List<Action>> cache = (Map<String, List<Action>>) attributeMap.get("MethodKeyRt");
             if (cache == null) {
                 attributeMap.putIfAbsent("MethodKeyRt", new ConcurrentHashMap<>(32));
@@ -177,7 +190,7 @@ public class RtStatComposite extends AbstractMetricsExport {
         List<Action> actions;
         actions = new LinkedList<>();
         for (LongContainer container : rtStats.get(registryOpType)) {
-            MethodMetric key = new MethodMetric(getApplicationModel(), invocation, serviceLevel);
+            MethodMetric key = new MethodMetric(getApplicationModel(), invocation, getServiceLevel());
             Number current = (Number) container.get(key);
             if (current == null) {
                 container.putIfAbsent(key, container.getInitFunc().apply(key));
@@ -195,13 +208,15 @@ public class RtStatComposite extends AbstractMetricsExport {
             for (LongContainer<? extends Number> container : containers) {
                 MetricsKeyWrapper metricsKeyWrapper = container.getMetricsKeyWrapper();
                 for (Metric key : container.keySet()) {
-                    // Use keySet to obtain the original key instance reference of ConcurrentHashMap to avoid early recycling of the micrometer
-                    list.add(new GaugeMetricSample<>(metricsKeyWrapper.targetKey(),
-                        metricsKeyWrapper.targetDesc(),
-                        key.getTags(),
-                        category,
-                        key,
-                        value -> container.getValueSupplier().apply(value)));
+                    // Use keySet to obtain the original key instance reference of ConcurrentHashMap to avoid early
+                    // recycling of the micrometer
+                    list.add(new GaugeMetricSample<>(
+                            metricsKeyWrapper.targetKey(),
+                            metricsKeyWrapper.targetDesc(),
+                            key.getTags(),
+                            category,
+                            key,
+                            value -> container.getValueSupplier().apply(value)));
                 }
             }
         }
@@ -211,7 +226,6 @@ public class RtStatComposite extends AbstractMetricsExport {
     public List<LongContainer<? extends Number>> getRtStats() {
         return rtStats.values().stream().flatMap(List::stream).collect(Collectors.toList());
     }
-
 
     private static class Action {
         private final BiConsumer<Long, Number> consumerFunc;
