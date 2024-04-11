@@ -76,6 +76,10 @@ public class FrameworkModel extends ScopeModel {
      * Use {@link FrameworkModel#newModel()} to create a new model
      */
     public FrameworkModel() {
+        // 调用父类型ScopeModel传递参数，这个构造器的
+        // 第一个参数为空代表这是一个顶层的域模型，
+        // 第二个代表了这个是框架FRAMEWORK域，
+        // 第三个 false 不是内部域
         super(null, ExtensionScope.FRAMEWORK, false);
         synchronized (globalLock) {
             synchronized (instLock) {
@@ -85,10 +89,13 @@ public class FrameworkModel extends ScopeModel {
                 if (LOGGER.isInfoEnabled()) {
                     LOGGER.info(getDesc() + " is created");
                 }
+                // 这里初始化之前先调用下父类型 ScopeModel 的初始化方法
                 initialize();
 
+                // 使用 TypeDefinitionBuilder 的静态方法 initBuilders 来初始化类型构建器 TypeBuilder 类型集合
                 TypeDefinitionBuilder.initBuilders(this);
 
+                // 框架服务存储仓库对象，可以用于快速查询服务提供者信息
                 serviceRepository = new FrameworkServiceRepository(this);
 
                 ExtensionLoader<ScopeModelInitializer> initializerExtensionLoader =
@@ -97,8 +104,10 @@ public class FrameworkModel extends ScopeModel {
                 for (ScopeModelInitializer initializer : initializers) {
                     initializer.initializeFrameworkModel(this);
                 }
-
+                // 创建一个内部的 ApplicationModel 类型，细节下面说
                 internalApplicationModel = new ApplicationModel(this, true);
+                // 创建ApplicationConfig类型对象同时传递应用程序模型对象internalApplicationModel
+                // 获取ConfigManager类型对象，然后设置添加当前应用配置对象
                 internalApplicationModel
                         .getApplicationConfigManager()
                         .setApplication(new ApplicationConfig(

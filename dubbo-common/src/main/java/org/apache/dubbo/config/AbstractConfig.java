@@ -424,11 +424,16 @@ public abstract class AbstractConfig implements Serializable {
     }
 
     public final void setScopeModel(ScopeModel scopeModel) {
+        // 第一次初始化的当前成员变量是空的可以设置变量
         if (scopeModel != null && this.scopeModel != scopeModel) {
+            // 检查参数是否合法
             checkScopeModel(scopeModel);
+            // 初始化对象
             ScopeModel oldScopeModel = this.scopeModel;
             this.scopeModel = scopeModel;
             // reinitialize spi extension and change referenced config's scope model
+            // 被子类重写的方法，根据多态会调用具体子类型的这个方法我们下面来看
+            // 子类应该重写此方法以初始化其SPI扩展并更改引用的配置的范围模型。
             this.postProcessAfterScopeModelChanged(oldScopeModel, this.scopeModel);
         }
     }
