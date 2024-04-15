@@ -86,21 +86,25 @@ public class Environment extends LifecycleAdapter implements ApplicationExt {
             this.externalConfiguration = new InmemoryConfiguration("ExternalConfig");
             this.appExternalConfiguration = new InmemoryConfiguration("AppExternalConfig");
             this.appConfiguration = new InmemoryConfiguration("AppConfig");
-
+            // 服务迁移配置加载 dubbo2升级dubbo3的一些配置
             loadMigrationRule();
         }
     }
 
     /**
      * @deprecated MigrationRule will be removed in 3.1
+     * 服务迁移配置加载 JVM > env > 代码路径 dubbo-migration.yaml
      */
     @Deprecated
     private void loadMigrationRule() {
         if (Boolean.parseBoolean(System.getProperty(CommonConstants.DUBBO_MIGRATION_FILE_ENABLE, "false"))) {
+            // JVM 参数中获取
             String path = System.getProperty(CommonConstants.DUBBO_MIGRATION_KEY);
             if (StringUtils.isEmpty(path)) {
+                // env 环境变量中获取
                 path = System.getenv(CommonConstants.DUBBO_MIGRATION_KEY);
                 if (StringUtils.isEmpty(path)) {
+                    // 类路径下获取文件 dubbo-migration.yaml
                     path = CommonConstants.DEFAULT_DUBBO_MIGRATION_FILE;
                 }
             }

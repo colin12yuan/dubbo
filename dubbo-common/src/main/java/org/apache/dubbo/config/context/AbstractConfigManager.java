@@ -117,6 +117,9 @@ public abstract class AbstractConfigManager extends LifecycleAdapter {
         CompositeConfiguration configuration = scopeModel.modelEnvironment().getConfiguration();
 
         // dubbo.config.mode
+        // dubbo.config.mode 获取配置模式，配置模式对应枚举类型 ConfigMode，
+        // 这个配置决定了属性覆盖的顺序，当有同一个配置 key 多次出现时候，以最新配置为准，还是以最老的那个配置为准，还是配置重复则抛出异常，
+        // 默认值为严格模式 STRICT 重复则抛出异常
         String configModeStr = (String) configuration.getProperty(ConfigKeys.DUBBO_CONFIG_MODE);
         try {
             if (StringUtils.hasText(configModeStr)) {

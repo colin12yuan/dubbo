@@ -106,6 +106,7 @@ public class ApplicationModel extends ScopeModel {
             if (LOGGER.isInfoEnabled()) {
                 LOGGER.info(getDesc() + " is created");
             }
+            // 这个是调用域模型来初始化基础信息如扩展访问器等
             initialize();
 
             this.internalModule = new ModuleModel(this, true);
@@ -117,9 +118,9 @@ public class ApplicationModel extends ScopeModel {
             for (String listenerName : listenerNames) {
                 extensionLoader.getExtension(listenerName).init();
             }
-
+            // 初始化扩展（这个是应用程序生命周期的方法调用，这里调用初始化方法）
             initApplicationExts();
-
+            // 获取域模型初始化器扩展对象列表，然后执行初始化方法
             ExtensionLoader<ScopeModelInitializer> initializerExtensionLoader =
                     this.getExtensionLoader(ScopeModelInitializer.class);
             Set<ScopeModelInitializer> initializers = initializerExtensionLoader.getSupportedExtensionInstances();

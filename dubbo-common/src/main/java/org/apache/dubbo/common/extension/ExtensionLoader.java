@@ -343,11 +343,15 @@ public class ExtensionLoader<T> {
     public List<T> getActivateExtension(URL url, String[] values, String group) {
         checkDestroyed();
         // solve the bug of using @SPI's wrapper method to report a null pointer exception.
+        // 创建个有序的Map集合,用来对扩展进行排序
         Map<Class<?>, T> activateExtensionsMap = new TreeMap<>(activateComparator);
+        // 初始化扩展名字,指定了扩展名字values不为空
         List<String> names = values == null
                 ? new ArrayList<>(0)
                 : Arrays.stream(values).map(StringUtils::trim).collect(Collectors.toList());
+        // 扩展名字使用Set集合进行去重
         Set<String> namesSet = new HashSet<>(names);
+        // 参数常量是 -default 扩展名字是否不包含默认的
         if (!namesSet.contains(REMOVE_VALUE_PREFIX + DEFAULT_KEY)) {
             if (cachedActivateGroups.size() == 0) {
                 synchronized (cachedActivateGroups) {
@@ -359,7 +363,7 @@ public class ExtensionLoader<T> {
                             Object activate = entry.getValue();
 
                             String[] activateGroup, activateValue;
-
+                            // 遍历所有的activates列表获取group()和value()值
                             if (activate instanceof Activate) {
                                 activateGroup = ((Activate) activate).group();
                                 activateValue = ((Activate) activate).value();
@@ -371,8 +375,10 @@ public class ExtensionLoader<T> {
                             } else {
                                 continue;
                             }
+                            // 缓存分组值
                             cachedActivateGroups.put(name, new HashSet<>(Arrays.asList(activateGroup)));
                             String[][] keyPairs = new String[activateValue.length][];
+                            // 遍历指定的激活扩展的扩展名字列表
                             for (int i = 0; i < activateValue.length; i++) {
                                 if (activateValue[i].contains(":")) {
                                     keyPairs[i] = new String[2];
@@ -384,6 +390,7 @@ public class ExtensionLoader<T> {
                                     keyPairs[i][0] = activateValue[i];
                                 }
                             }
+                            // 缓存指定扩展信息
                             cachedActivateValues.put(name, keyPairs);
                         }
                     }
@@ -804,20 +811,29 @@ public class ExtensionLoader<T> {
                 instance = postProcessAfterInitialization(instance, name);
             }
 
+            // Dubbo通过Wrapper实现AOP的方法
             // 如果启用包装的话，则自动为进行包装.
-            // 比如我基于 Protocol 定义了 DubboProtocol 的扩展，但实际上在 Dubbo 中不是直接使用的 DubboProtocol, 而是其包装类
-            // ProtocolListenerWrapper
+            // 比如我基于 Protocol 定义了 DubboProtocol 的扩展，但实际上在 Dubbo 中不是直接使用的 DubboProtocol, 而是其包装类 ProtocolListenerWrapper
             if (wrap) {
                 List<Class<?>> wrapperClassesList = new ArrayList<>();
+                // wrap类型排序。这个wrap类型是如何来的呢，
+                // 在前面扫描扩展类型的时候如果当前扩展类型不是 Adaptive 注解修饰的,
+                // 并且当前类型 type 有个构造器参数是 type 自身的也是前面加载扩展类型时候说的装饰器模式
+                // 可以参考 DubboProtocol 的构造器
                 if (cachedWrapperClasses != null) {
                     wrapperClassesList.addAll(cachedWrapperClasses);
                     wrapperClassesList.sort(WrapperComparator.COMPARATOR);
-                    Collections.reverse(wrapperClassesList);
+                    Collections.reverse(wrapperClassesList); // 反转之后值越大就会在列表的前面
                 }
                 // 循环创建 Wrapper 实例
+                // 从缓存中查到了wrapper扩展则遍历这些 wrapper 扩展进行筛选
                 if (CollectionUtils.isNotEmpty(wrapperClassesList)) {
                     for (Class<?> wrapperClass : wrapperClassesList) {
                         Wrapper wrapper = wrapperClass.getAnnotation(Wrapper.class);
+                        // wrapper注解不存在(前面判断过Wrapper类型是构造器满足条件的)
+                        // - 存在 Wrapper 注解:
+                        // - matches 匹配,
+                        // - 或者 mismatches 不包含当前扩展
                         boolean match = (wrapper == null)
                                 || ((ArrayUtils.isEmpty(wrapper.matches())
                                                 || ArrayUtils.contains(wrapper.matches(), name))
@@ -861,6 +877,7 @@ public class ExtensionLoader<T> {
 
     @SuppressWarnings("unchecked")
     private T postProcessAfterInitialization(T instance, String name) throws Exception {
+        // 扩展若实现 ExtensionAccessorAware 接口，则可以活动适当的 ExtensionAccessor 实例
         if (instance instanceof ExtensionAccessorAware) {
             ((ExtensionAccessorAware) instance).setExtensionAccessor(extensionDirector);
         }
