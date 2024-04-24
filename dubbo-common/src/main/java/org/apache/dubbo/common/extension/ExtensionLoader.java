@@ -418,7 +418,7 @@ public class ExtensionLoader<T> {
                 if (name.startsWith(REMOVE_VALUE_PREFIX) || namesSet.contains(REMOVE_VALUE_PREFIX + name)) {
                     continue;
                 }
-                if (DEFAULT_KEY.equals(name)) {
+                if (DEFAULT_KEY.equals(name)) { // default 为 activateExtensionsMap 匹配扩展
                     extensionsResult.addAll(activateExtensionsMap.values());
                     continue;
                 }
