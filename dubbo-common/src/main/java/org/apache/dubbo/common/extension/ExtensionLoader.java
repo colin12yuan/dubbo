@@ -832,8 +832,8 @@ public class ExtensionLoader<T> {
                         Wrapper wrapper = wrapperClass.getAnnotation(Wrapper.class);
                         // wrapper注解不存在(前面判断过Wrapper类型是构造器满足条件的)
                         // - 存在 Wrapper 注解:
-                        // - matches 匹配,
-                        // - 或者 mismatches 不包含当前扩展
+                        //   - matches 为空或则 matches 匹配，
+                        //   - 且 mismatches 不包含当前扩展
                         boolean match = (wrapper == null)
                                 || ((ArrayUtils.isEmpty(wrapper.matches())
                                                 || ArrayUtils.contains(wrapper.matches(), name))
