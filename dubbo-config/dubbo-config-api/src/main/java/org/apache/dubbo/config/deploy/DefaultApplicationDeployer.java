@@ -653,6 +653,7 @@ public class DefaultApplicationDeployer extends AbstractDeployer<ApplicationMode
      */
     @Override
     public Future start() {
+        // 启动锁，防止重复启动
         synchronized (startLock) {
             if (isStopping() || isStopped() || isFailed()) {
                 throw new IllegalStateException(getIdentifier() + " is stopping or stopped, can not start again");

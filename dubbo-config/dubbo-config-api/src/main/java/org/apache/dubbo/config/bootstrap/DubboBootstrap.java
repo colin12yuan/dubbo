@@ -227,6 +227,7 @@ public final class DubboBootstrap {
      * @return
      */
     public DubboBootstrap start(boolean wait) {
+        // 这个发布器是在ApplicationModel对象创建之后初始化的时候进行初始化的具体类型为DefaultApplicationDeployer
         Future future = applicationDeployer.start();
         if (wait) {
             try {
