@@ -212,19 +212,27 @@ public class DefaultApplicationDeployer extends AbstractDeployer<ApplicationMode
             if (initialized) {
                 return;
             }
+            // 初始逻辑；执行监听器开始初始化处理逻辑
             onInitialize();
 
             // register shutdown hook
+            // 注册关闭钩子，这个逻辑基本每个中间件应用都必须要要做的事情了，
+            // 正常关闭应用回收资源，一般没这个逻辑情况下容易出现一些异常，
+            // 让我们开发人员很疑惑，而这个逻辑往往并不好处理的干净。
             registerShutdownHook();
 
+            // 启动配置中心
             startConfigCenter();
 
+            // 加载配置，一般配置信息当前机器的来源：环境变量，JVM启动参数，配置文字
             loadApplicationConfigs();
 
+            // 初始化模块发布器 （发布服务提供和服务引用使用）
             initModuleDeployers();
 
+            // 初始化指标上报器
             initMetricsReporter();
-
+            // 初始化指标服务
             initMetricsService();
 
             // @since 2.7.8
@@ -661,6 +669,8 @@ public class DefaultApplicationDeployer extends AbstractDeployer<ApplicationMode
 
             try {
                 // maybe call start again after add new module, check if any new module
+                // 处理待启动模块：调用 hasPendingModule() 检查是否有未启动的模块。
+                // 如果存在，调用 startModules() 启动这些模块。
                 boolean hasPendingModule = hasPendingModule();
 
                 if (isStarting()) {
@@ -681,9 +691,9 @@ public class DefaultApplicationDeployer extends AbstractDeployer<ApplicationMode
                 // pending -> starting : first start app
                 // started -> starting : re-start app
                 onStarting();
-
+                // 核心初始化逻辑，这里主要做一些应用级别启动，比如配置中心，元数据中心
                 initialize();
-
+                // 启动模块（我们的服务提供和服务引用是在这个模块级别的）
                 doStart();
             } catch (Throwable e) {
                 onFailed(getIdentifier() + " start failure", e);
