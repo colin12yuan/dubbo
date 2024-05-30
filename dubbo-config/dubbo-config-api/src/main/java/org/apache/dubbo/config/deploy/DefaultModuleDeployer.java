@@ -151,23 +151,26 @@ public class DefaultModuleDeployer extends AbstractDeployer<ModuleModel> impleme
     @Override
     public Future start() throws IllegalStateException {
         // initialize，maybe deadlock applicationDeployer lock & moduleDeployer lock
+        // 如果应用未初始化则初始化（非正常逻辑）
         applicationDeployer.initialize();
 
         return startSync();
     }
 
     private synchronized Future startSync() throws IllegalStateException {
+        // 模块发布器停止中 或者 已经停止 或者 启动失败，则直接抛出异常返回
         if (isStopping() || isStopped() || isFailed()) {
             throw new IllegalStateException(getIdentifier() + " is stopping or stopped, can not start again");
         }
 
         try {
+            // 启动中或者已经启动了则直接返回一个Future对象
             if (isStarting() || isStarted()) {
                 return startFuture;
             }
-
+            // 切换模块启动状态为 STARTING
             onModuleStarting();
-
+            // 模块发布器进行初始化
             initialize();
 
             // export services
@@ -196,6 +199,7 @@ public class DefaultModuleDeployer extends AbstractDeployer<ModuleModel> impleme
                 // complete module start future after application state changed
                 completeStartFuture(true);
             } else {
+                // 如果是异步的则等待服务发布和服务引用异步回调
                 frameworkExecutorRepository.getSharedExecutor().submit(() -> {
                     try {
                         // wait for export finish

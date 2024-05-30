@@ -275,11 +275,15 @@ public class DefaultApplicationDeployer extends AbstractDeployer<ApplicationMode
 
         // load config centers
         configManager.loadConfigsOfTypeFromProps(ConfigCenterConfig.class);
-
+        // 出于兼容性目的，如果没有明确指定配置中心，
+        // 并且registryConfig的UseAConfigCenter为null或true，请使用registry作为默认配置中心
         useRegistryAsConfigCenterIfNecessary();
 
         // check Config Center
+        // 配置管理器中获取配置中心
         Collection<ConfigCenterConfig> configCenters = configManager.getConfigCenters();
+        // 配置中心配置不为空则刷新配置中心配置将其放入配置管理器中
+        // 下面开始刷新配置中心配置，如果配置中心配置为空则执行空刷新
         if (CollectionUtils.isEmpty(configCenters)) {
             ConfigCenterConfig configCenterConfig = new ConfigCenterConfig();
             configCenterConfig.setScopeModel(applicationModel);
@@ -296,7 +300,9 @@ public class DefaultApplicationDeployer extends AbstractDeployer<ApplicationMode
             }
         }
 
+        // 配置中心配置不为空则将配置中心配置添加到 environment 中
         if (CollectionUtils.isNotEmpty(configCenters)) {
+            // 多配置中心本地动态配置对象创建CompositeDynamicConfiguration
             CompositeDynamicConfiguration compositeDynamicConfiguration = new CompositeDynamicConfiguration();
             for (ConfigCenterConfig configCenter : configCenters) {
                 // Pass config from ConfigCenterBean to environment
@@ -304,8 +310,10 @@ public class DefaultApplicationDeployer extends AbstractDeployer<ApplicationMode
                 environment.updateAppExternalConfigMap(configCenter.getAppExternalConfiguration());
 
                 // Fetch config from remote config center
+                // 从配置中心拉取配置添加到组合配置中
                 compositeDynamicConfiguration.addConfiguration(prepareEnvironment(configCenter));
             }
+            // 将配置中心中的动态配置信息 设置到environment的动态配置属性中
             environment.setDynamicConfiguration(compositeDynamicConfiguration);
         }
     }
@@ -752,9 +760,12 @@ public class DefaultApplicationDeployer extends AbstractDeployer<ApplicationMode
 
     private void startModules() {
         // ensure init and start internal module first
+        // 确保初始化并首先启动内部模块，Dubbo3 中将模块分为内部和外部，
+        // 内部是核心代码已经提供的一些服务比如元数据服务，外部是我们自己写的服务
         prepareInternalModule();
 
         // filter and start pending modules, ignore new module during starting, throw exception of module start
+        // 启动所有的模块 （启动所有的服务）
         for (ModuleModel moduleModel : applicationModel.getModuleModels()) {
             if (moduleModel.getDeployer().isPending()) {
                 moduleModel.getDeployer().start();

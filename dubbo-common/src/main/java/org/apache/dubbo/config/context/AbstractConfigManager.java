@@ -509,11 +509,27 @@ public abstract class AbstractConfigManager extends LifecycleAdapter {
         PropertiesConfiguration properties = environment.getPropertiesConfiguration();
 
         // load multiple configs with id
+        // 多注册中心配置id查询
+        /*
+           搜索属性并提取指定类型的配置 ID。
+           例如如下配置
+           # 配置信息 properties
+           dubbo.registries.registry1.address=xxx
+           dubbo.registries.registry2.port=xxx
+
+           # 提取配置的id extract
+           Set<String> configIds = getConfigIds(RegistryConfig.class)
+
+           # 提取的配置id结果 result
+           configIds: ["registry1", "registry2"]
+       */
         Set<String> configIds = this.getConfigIdsFromProps(cls);
         configIds.forEach(id -> {
+            // 遍历这些配置id，判断配置缓存（configsCache成员变量）中是否已经存在当前配置
             if (!this.getConfig(cls, id).isPresent()) {
                 T config;
                 try {
+                    // 创建配置对象，为配置对象初始化配置id
                     config = createConfig(cls, scopeModel);
                     config.setId(id);
                 } catch (Exception e) {
@@ -530,8 +546,9 @@ public abstract class AbstractConfigManager extends LifecycleAdapter {
                         properties.setProperty(key, id);
                         addDefaultNameConfig = true;
                     }
-
+                    // 刷新配置信息 好理解点就是 Dubbo 配置属性重写
                     config.refresh();
+                    // 将当前配置信息添加到配置缓存中 configsCache 成员变量
                     this.addConfig(config);
                     tmpConfigs.add(config);
                 } catch (Exception e) {
@@ -551,6 +568,7 @@ public abstract class AbstractConfigManager extends LifecycleAdapter {
         });
 
         // If none config of the type, try load single config
+        // 如果没有该类型的配置，请尝试加载单个配置
         if (this.getConfigs(cls).isEmpty()) {
             // load single config
             List<Map<String, String>> configurationMaps = environment.getConfigurationMaps();
