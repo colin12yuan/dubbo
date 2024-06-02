@@ -83,6 +83,14 @@ public abstract class AbstractConfig implements Serializable {
 
     /**
      * tag name cache, speed up get tag name frequently
+     * eg:
+     * ApplicationConfig -> application
+     * ConfigCenterConfig -> config-center
+     * ServiceConfigBase<T> -> service
+     * ServiceConfig<T> -> service
+     * ReferenceConfigBase<T> -> reference
+     * ReferenceConfig<T> -> reference
+     * ConfigCenterBean -> config-center
      */
     private static final ConcurrentMap<Class, String> tagNameCache = new ConcurrentHashMap<>();
 
@@ -129,6 +137,14 @@ public abstract class AbstractConfig implements Serializable {
         this.setScopeModel(scopeModel);
     }
 
+    /**
+     * 根据 Class 获取类型对应的 TagName.
+     * ApplicationConfig.class -> application;
+     * ConfigCenterConfig.class -> config-center
+     *
+     * @param cls
+     * @return
+     */
     public static String getTagName(Class<?> cls) {
         return ConcurrentHashMapUtils.computeIfAbsent(tagNameCache, cls, (key) -> {
             String tag = cls.getSimpleName();
@@ -142,6 +158,15 @@ public abstract class AbstractConfig implements Serializable {
         });
     }
 
+    /**
+     * 获取类型 TagName 对应的复数形式
+     * eg:
+     * ApplicationConfig -> application -> applications
+     * RegistryConfig -> registry -> registries
+     * MetricsConfig -> metrics -> metricses
+     * @param cls
+     * @return
+     */
     public static String getPluralTagName(Class<?> cls) {
         String tagName = getTagName(cls);
         if (tagName.endsWith("y")) {
@@ -705,6 +730,11 @@ public abstract class AbstractConfig implements Serializable {
             try {
                 // check and init before do refresh
                 preProcessRefresh();
+                // 根据配置实例前缀刷新
+                // 配置前缀：
+                // 如果配置实例存在 id: dubbo.{tag-name}s.{id}
+                // 如果配置实例存在 name: dubbo.{tag-name}s.{name}
+                // 根据配置类型前缀: dubbo.{tag-name}
                 refreshWithPrefixes(getPrefixes(), getConfigMode());
             } catch (Exception e) {
                 logger.error(

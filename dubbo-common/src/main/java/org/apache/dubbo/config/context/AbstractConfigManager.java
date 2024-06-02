@@ -73,6 +73,7 @@ public abstract class AbstractConfigManager extends LifecycleAdapter {
             LoggerFactory.getErrorTypeAwareLogger(AbstractConfigManager.class);
     private static final Set<Class<? extends AbstractConfig>> uniqueConfigTypes = new ConcurrentHashSet<>();
 
+    // TagName (also Config type) -> ConfigMap (also configGenerateId -> Config)
     final Map<String, Map<String, AbstractConfig>> configsCache = new ConcurrentHashMap<>();
 
     private final Map<String, AtomicInteger> configIdIndexes = new ConcurrentHashMap<>();
@@ -520,16 +521,16 @@ public abstract class AbstractConfigManager extends LifecycleAdapter {
            # 提取配置的id extract
            Set<String> configIds = getConfigIds(RegistryConfig.class)
 
-           # 提取的配置id结果 result
+           # 提取的已配置的 id 结果 result
            configIds: ["registry1", "registry2"]
        */
         Set<String> configIds = this.getConfigIdsFromProps(cls);
         configIds.forEach(id -> {
-            // 遍历这些配置id，判断配置缓存（configsCache成员变量）中是否已经存在当前配置
+            // 遍历这些配置id，判断配置缓存（configsCache 成员变量）中是否已经存在当前配置
             if (!this.getConfig(cls, id).isPresent()) {
                 T config;
                 try {
-                    // 创建配置对象，为配置对象初始化配置id
+                    // 创建配置对象，为配置对象初始化配置 id
                     config = createConfig(cls, scopeModel);
                     config.setId(id);
                 } catch (Exception e) {

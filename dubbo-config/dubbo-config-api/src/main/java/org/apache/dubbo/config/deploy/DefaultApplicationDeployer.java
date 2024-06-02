@@ -276,7 +276,7 @@ public class DefaultApplicationDeployer extends AbstractDeployer<ApplicationMode
         // load config centers
         configManager.loadConfigsOfTypeFromProps(ConfigCenterConfig.class);
         // 出于兼容性目的，如果没有明确指定配置中心，
-        // 并且registryConfig的UseAConfigCenter为null或true，请使用registry作为默认配置中心
+        // 并且 registryConfig 的 useAsConfigCenter 为null或true，请使用 registry 作为默认配置中心
         useRegistryAsConfigCenterIfNecessary();
 
         // check Config Center
@@ -358,6 +358,8 @@ public class DefaultApplicationDeployer extends AbstractDeployer<ApplicationMode
      */
     private void useRegistryAsConfigCenterIfNecessary() {
         // we use the loading status of DynamicConfiguration to decide whether ConfigCenter has been initiated.
+        // 我们使用 DynamicConfiguration 的加载状态来决定是否已启动 ConfigCenter。
+        // 因为配置中心配置加载完成之后会初始化动态配置 defaultDynamicConfiguration
         if (environment.getDynamicConfiguration().isPresent()) {
             return;
         }
@@ -565,7 +567,11 @@ public class DefaultApplicationDeployer extends AbstractDeployer<ApplicationMode
         if (configuredValue != null) { // If configured, take its value.
             supported = configuredValue.booleanValue();
         } else { // Or check the extension existence
+            // 这个逻辑的话是判断下注册中心的协议是否满足要求,我们例子代码中使用的是zookeeper
             String protocol = registryConfig.getProtocol();
+            // 这个扩展是否支持的逻辑判断是这样的扫描扩展类，看一下当前扩展类型是否有对应协议的扩展，比如在扩展文件里面这样配置过后是支持的 protocol=xxxImpl
+            // 动态配置的扩展类型为：interface org.apache.dubbo.common.config.configcenter.DynamicConfigurationFactory
+            // zookeeper 协议肯定是支持的，因为 zookeeper 协议实现了这个动态配置工厂，这个扩展类型为 ZookeeperDynamicConfigurationFactory
             supported = supportsExtension(extensionClass, protocol);
             if (logger.isInfoEnabled()) {
                 logger.info(format(
