@@ -122,8 +122,10 @@ public class DefaultModuleDeployer extends AbstractDeployer<ModuleModel> impleme
             if (initialized) {
                 return;
             }
+            // 初始化逻辑：执行监听器开始初始化处理逻辑
             onInitialize();
 
+            // 模块相关的配置加载
             loadConfigs();
 
             // read ModuleConfig
