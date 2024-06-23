@@ -842,7 +842,7 @@ public abstract class AbstractConfig implements Serializable {
                             + obj.getClass().getSimpleName()
                             + ", please make sure every property has getter/setter method provided.");
                 }
-            } else if (isParametersSetter(method)) {
+            } else if (isParametersSetter(method)) { // public void setParameters(Map)
                 String propertyName = extractPropertyName(method.getName());
 
                 String value = StringUtils.trim(configuration.getString(propertyName));

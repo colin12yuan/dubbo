@@ -475,6 +475,7 @@ public class DefaultApplicationDeployer extends AbstractDeployer<ApplicationMode
         if (StringUtils.isNotEmpty(registryConfig.getGroup())) {
             cc.setGroup(registryConfig.getGroup());
         }
+        // 这个方法转换地址是修复 bug 用的可以看 bug Issue : https://github.com/apache/dubbo/issues/6476
         cc.setAddress(getRegistryCompatibleAddress(registryConfig));
         cc.setNamespace(registryConfig.getGroup());
         cc.setUsername(registryConfig.getUsername());
@@ -482,6 +483,8 @@ public class DefaultApplicationDeployer extends AbstractDeployer<ApplicationMode
         if (registryConfig.getTimeout() != null) {
             cc.setTimeout(registryConfig.getTimeout().longValue());
         }
+        // 这个属性注释中已经建议了已经弃用了默认就是 false 了
+        // 如果配置中心被赋予最高优先级，它将覆盖所有其他配置，
         cc.setHighestPriority(false);
         return cc;
     }
@@ -567,7 +570,7 @@ public class DefaultApplicationDeployer extends AbstractDeployer<ApplicationMode
         if (configuredValue != null) { // If configured, take its value.
             supported = configuredValue.booleanValue();
         } else { // Or check the extension existence
-            // 这个逻辑的话是判断下注册中心的协议是否满足要求,我们例子代码中使用的是zookeeper
+            // 这个逻辑的话是判断下注册中心的协议是否满足要求，我们例子代码中使用的是 zookeeper
             String protocol = registryConfig.getProtocol();
             // 这个扩展是否支持的逻辑判断是这样的扫描扩展类，看一下当前扩展类型是否有对应协议的扩展，比如在扩展文件里面这样配置过后是支持的 protocol=xxxImpl
             // 动态配置的扩展类型为：interface org.apache.dubbo.common.config.configcenter.DynamicConfigurationFactory
