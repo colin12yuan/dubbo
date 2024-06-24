@@ -80,13 +80,20 @@ public class Environment extends LifecycleAdapter implements ApplicationExt {
     @Override
     public void initialize() throws IllegalStateException {
         if (initialized.compareAndSet(false, true)) {
+            // 加载在JVM或者环境变量指定的dubbo.properties配置文件 配置的key为dubbo.properties.file ,如果未指定则查找类路径下的dubbo.properties
             this.propertiesConfiguration = new PropertiesConfiguration(scopeModel);
+            // 系统JVM参数的配置无需我们来加载到内存,系统已经加载好了放到了System中,我们只需System.getProperty(key)来调用
             this.systemConfiguration = new SystemConfiguration();
+            // 系统环境变量的配置,无需我们来加载到内存,系统已经加载好了放到了System中,我们只需System.getenv(key)来获取就可以
             this.environmentConfiguration = new EnvironmentConfiguration();
+            // 从远程配置中心的全局配置获取对应配置
             this.externalConfiguration = new InmemoryConfiguration("ExternalConfig");
+            // 从远程配置中心的应用配置获取对应配置
             this.appExternalConfiguration = new InmemoryConfiguration("AppExternalConfig");
+            // 应用内的配置比如:  Spring Environment/PropertySources/application.properties
             this.appConfiguration = new InmemoryConfiguration("AppConfig");
             // 服务迁移配置加载 dubbo2升级dubbo3的一些配置
+            // 加载迁移配置,用户在JVM参数或者环境变量中指定的dubbo.migration.file,如果用户未指定测尝试加载类路径下的dubbo-migration.yaml
             loadMigrationRule();
         }
     }
