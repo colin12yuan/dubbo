@@ -378,6 +378,16 @@ public abstract class AbstractConfig implements Serializable {
         }
     }
 
+    /**
+     * 用来检查某个属性的设置器方法是否是嵌套的设置器。嵌套设置器指的是那些在类的属性中包含其他类的实例，并且这些实例中的属性可以通过调用该实例的方法来设置。
+     * 具体来说，isNestedSetter 方法可能会检查以下几个方面：
+     * 方法名称：通常会检查方法名称是否以 "set" 开头，这是 JavaBean 规范中约定俗成的命名方式。
+     * 方法参数：检查方法是否只有一个参数，并且该参数是一个自定义的类或复杂类型，而不是基本数据类型或简单的封装类（如 String, Integer 等）。
+     * 方法的返回类型：有时会检查返回类型，以确保它是 void 或者是当前对象的类型（链式调用）。
+     * @param obj
+     * @param method
+     * @return
+     */
     private static boolean isNestedSetter(Object obj, Method method) {
         boolean isSetter = method.getName().startsWith("set")
                 && !"set".equals(method.getName())
@@ -792,6 +802,16 @@ public abstract class AbstractConfig implements Serializable {
         processExtraRefresh(preferredPrefix, subPropsConfiguration);
     }
 
+    /**
+     * 用于将配置属性注入到目标对象中。
+     * 这个方法的功能是遍历源配置的属性，将它们分配给目标对象的对应属性。
+     * 这样的操作通常会涉及到反射机制，用于动态地设置目标对象的属性。
+     * @param obj
+     * @param environment
+     * @param properties
+     * @param configuration
+     * @param configMode
+     */
     private void assignProperties(
             Object obj,
             Environment environment,
@@ -843,7 +863,7 @@ public abstract class AbstractConfig implements Serializable {
                             + ", please make sure every property has getter/setter method provided.");
                 }
             } else if (isParametersSetter(method)) { // public void setParameters(Map)
-                String propertyName = extractPropertyName(method.getName());
+                String propertyName = extractPropertyName(method.getName()); // propertyName = parameters
 
                 String value = StringUtils.trim(configuration.getString(propertyName));
                 Map<String, String> parameterMap;
