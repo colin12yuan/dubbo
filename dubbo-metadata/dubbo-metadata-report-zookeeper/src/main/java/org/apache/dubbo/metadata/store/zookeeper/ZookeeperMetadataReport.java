@@ -68,6 +68,8 @@ public class ZookeeperMetadataReport extends AbstractMetadataReport {
     private ConcurrentMap<String, MappingDataListener> casListenerMap = new ConcurrentHashMap<>();
 
     public ZookeeperMetadataReport(URL url, ZookeeperTransporter zookeeperTransporter) {
+        // url即配置，配置传递给抽象类，做一些公共的逻辑
+        // url参考:zookeeper://127.0.0.1:2181/org.apache.dubbo.metadata.report.MetadataReport?application=dubbo-demo-api-provider&client=&port=2181&protocol=zookeeper
         super(url);
         if (url.isAnyHost()) {
             throw new IllegalStateException("registry address == null");

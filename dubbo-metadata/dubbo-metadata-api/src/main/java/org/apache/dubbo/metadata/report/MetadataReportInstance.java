@@ -69,10 +69,11 @@ public class MetadataReportInstance implements Disposable {
     }
 
     public void init(List<MetadataReportConfig> metadataReportConfigs) {
+        // CAS 判断是否有初始化过
         if (!init.compareAndSet(false, true)) {
             return;
         }
-
+        // 元数据类型配置如果未配置则默认为 local
         this.metadataType = applicationModel
                 .getApplicationConfigManager()
                 .getApplicationOrElseThrow()
@@ -80,9 +81,10 @@ public class MetadataReportInstance implements Disposable {
         if (metadataType == null) {
             this.metadataType = DEFAULT_METADATA_STORAGE_TYPE;
         }
-
+        // 获取 MetadataReportFactory 工厂类型
         MetadataReportFactory metadataReportFactory =
                 applicationModel.getExtensionLoader(MetadataReportFactory.class).getAdaptiveExtension();
+        // 多元数据中心初始化
         for (MetadataReportConfig metadataReportConfig : metadataReportConfigs) {
             init(metadataReportConfig, metadataReportFactory);
         }
@@ -92,6 +94,7 @@ public class MetadataReportInstance implements Disposable {
         URL url = config.toUrl();
         if (METADATA_REPORT_KEY.equals(url.getProtocol())) {
             String protocol = url.getParameter(METADATA_REPORT_KEY, DEFAULT_DIRECTORY);
+            // 配置转url
             url = URLBuilder.from(url)
                     .setProtocol(protocol)
                     .setPort(url.getParameter(PORT_KEY, url.getPort()))
@@ -107,6 +110,7 @@ public class MetadataReportInstance implements Disposable {
         //        RegistryConfig registryConfig = applicationModel.getConfigManager().getRegistry(relatedRegistryId)
         //                .orElseThrow(() -> new IllegalStateException("Registry id " + relatedRegistryId + " does not
         // exist."));
+        // 从元数据工厂中获取元数据
         MetadataReport metadataReport = metadataReportFactory.getMetadataReport(url);
         if (metadataReport != null) {
             metadataReports.put(getRelatedRegistryId(config, url), metadataReport);

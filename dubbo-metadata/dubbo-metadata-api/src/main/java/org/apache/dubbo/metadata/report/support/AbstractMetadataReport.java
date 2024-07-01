@@ -111,14 +111,19 @@ public abstract class AbstractMetadataReport implements MetadataReport {
     protected ApplicationModel applicationModel;
 
     public AbstractMetadataReport(URL reportServerURL) {
+        // 设置url 如:zookeeper://127.0.0.1:2181/org.apache.dubbo.metadata.report.MetadataReport?application=dubbo-demo-api-provider&client=&port=2181&protocol=zookeeper
         setUrl(reportServerURL);
         applicationModel = reportServerURL.getOrDefaultApplicationModel();
 
         boolean localCacheEnabled = reportServerURL.getParameter(REGISTRY_LOCAL_FILE_CACHE_ENABLED, true);
         // Start file save timer
+        // 缓存的文件名字
+        // 格式为: 用户目录+/.dubbo/dubbo-metadata- + 应用程序名字application + url地址(IP+端口) + 后缀.cache 如下所示
+        // /Users/song/.dubbo/dubbo-metadata-dubbo-demo-api-provider-127.0.0.1-2181.cache
         String defaultFilename = System.getProperty(USER_HOME) + DUBBO_METADATA + reportServerURL.getApplication()
                 + "-" + replace(reportServerURL.getAddress(), ":", "-")
                 + CACHE;
+        // 如果用户配置了缓存文件名字则以用户配置为准file
         String filename = reportServerURL.getParameter(FILE_KEY, defaultFilename);
         File file = null;
         if (localCacheEnabled && ConfigUtils.isNotEmpty(filename)) {
@@ -136,14 +141,23 @@ public abstract class AbstractMetadataReport implements MetadataReport {
                 file.delete();
             }
         }
+        // 赋值给成员变量后续继续可以用
         this.file = file;
+        // 文件存在则直接加载文件中的内容
         loadProperties();
+        // sync-report 配置的值为同步配置还异步配置，true是同步配置，默认为false为异步配置
         syncReport = reportServerURL.getParameter(SYNC_REPORT_KEY, false);
+        // 重试属性与逻辑也封装了一个类型，创建对象
+        // retry-times重试次数配置 默认为100次
+        // retry-period 重试间隔配置 默认为3000
         metadataReportRetry = new MetadataReportRetry(
                 reportServerURL.getParameter(RETRY_TIMES_KEY, DEFAULT_METADATA_REPORT_RETRY_TIMES),
                 reportServerURL.getParameter(RETRY_PERIOD_KEY, DEFAULT_METADATA_REPORT_RETRY_PERIOD));
         // cycle report the data switch
+        // 是否定期从元数据中心同步配置
+        // -report配置默认为true
         if (reportServerURL.getParameter(CYCLE_REPORT_KEY, DEFAULT_METADATA_REPORT_CYCLE_REPORT)) {
+            // 开启重试定时器
             reportTimerScheduler = Executors.newSingleThreadScheduledExecutor(
                     new NamedThreadFactory("DubboMetadataReportTimer", true));
             reportTimerScheduler.scheduleAtFixedRate(
@@ -166,6 +180,7 @@ public abstract class AbstractMetadataReport implements MetadataReport {
     }
 
     private void doSaveProperties(long version) {
+        // 不是最新的就不要持久化了
         if (version < lastCacheChanged.get()) {
             return;
         }
@@ -174,13 +189,22 @@ public abstract class AbstractMetadataReport implements MetadataReport {
         }
         // Save
         try {
+            // 创建本地文件锁:
+            // 路径为:
+            // /Users/song/.dubbo/dubbo-metadata-dubbo-demo-api-provider-127.0.0.1-2181.cache.lock
             File lockfile = new File(file.getAbsolutePath() + ".lock");
+            // 锁文件不存在则创建锁文件
             if (!lockfile.exists()) {
                 lockfile.createNewFile();
             }
+            // 随机访问文件工具类对象创建 读写权限
             try (RandomAccessFile raf = new RandomAccessFile(lockfile, "rw");
+                    // 文件Channel，返回与此文件关联的唯一FileChannel对象。
                     FileChannel channel = raf.getChannel()) {
+                // FileChannel中的lock()与tryLock()方法都是尝试去获取在某一文件上的独有锁（以下简称独有锁），可以实现进程间操作的互斥。
+                // 区别在于lock()会阻塞（blocking）方法的执行，tryLock()则不会。
                 FileLock lock = channel.tryLock();
+                // 如果多个线程同时进来未获取锁的则抛出异常
                 if (lock == null) {
                     throw new IOException(
                             "Can not lock the metadataReport cache file " + file.getAbsolutePath()
@@ -188,6 +212,8 @@ public abstract class AbstractMetadataReport implements MetadataReport {
                 }
                 // Save
                 try {
+                    // 文件不存在则创建本地元数据缓存文件
+                    // /Users/song/.dubbo/dubbo-metadata-dubbo-demo-api-provider-127.0.0.1-2181.cache
                     if (!file.exists()) {
                         file.createNewFile();
                     }
@@ -200,6 +226,7 @@ public abstract class AbstractMetadataReport implements MetadataReport {
                     } else {
                         // Using store method and setProperty method of the this.properties will cause lock contention
                         // under multi-threading, so deep copy a new container
+                        // 异步存储会导致锁争用，使用此的store方法和setProperty方法。属性将导致多线程下的锁争用，因此深度复制新容器
                         tmpProperties = new Properties();
                         Set<Map.Entry<Object, Object>> entries = properties.entrySet();
                         for (Map.Entry<Object, Object> entry : entries) {
@@ -208,6 +235,8 @@ public abstract class AbstractMetadataReport implements MetadataReport {
                     }
 
                     try (FileOutputStream outputFile = new FileOutputStream(file)) {
+                        // Properties类型自带的方法:
+                        // 将此属性表中的属性列表（键和元素对）以适合使用load（Reader）方法的格式写入输出字符流。
                         tmpProperties.store(outputFile, "Dubbo metadataReport Cache");
                     }
                 } finally {
@@ -253,6 +282,7 @@ public abstract class AbstractMetadataReport implements MetadataReport {
             } else {
                 properties.remove(metadataIdentifier.getUniqueKey(KeyTypeEnum.UNIQUE_KEY));
             }
+            // 获取最新修改版本持久化到磁盘
             long version = lastCacheChanged.incrementAndGet();
             if (sync) {
                 new SaveProperties(version).run();
@@ -310,7 +340,9 @@ public abstract class AbstractMetadataReport implements MetadataReport {
                         allMetadataReports.put(providerMetadataIdentifier, serviceDefinition);
                         failedReports.remove(providerMetadataIdentifier);
                         String data = JsonUtils.toJson(serviceDefinition);
+                        // 内存中的元数据同步到元数据中心
                         doStoreProviderMetadata(providerMetadataIdentifier, data);
+                        // 内存中的元数据同步到本地文件
                         saveProperties(providerMetadataIdentifier, data, true, !syncReport);
                     } catch (Exception e) {
                         // retry again. If failed again, throw exception.
@@ -454,8 +486,10 @@ public abstract class AbstractMetadataReport implements MetadataReport {
         while (iterable.hasNext()) {
             Map.Entry<MetadataIdentifier, Object> item = iterable.next();
             if (PROVIDER_SIDE.equals(item.getKey().getSide())) {
+                // 提供端的元数据则存储提供端元数据
                 this.storeProviderMetadata(item.getKey(), (FullServiceDefinition) item.getValue());
             } else if (CONSUMER_SIDE.equals(item.getKey().getSide())) {
+                // 消费端的元数据则存储提供端元数据
                 this.storeConsumerMetadata(item.getKey(), (Map) item.getValue());
             }
         }

@@ -319,22 +319,23 @@ public class DefaultApplicationDeployer extends AbstractDeployer<ApplicationMode
     }
 
     private void startMetadataCenter() {
-
+        // 如果未配置元数据中心的地址等配置则使用注册中心的地址等配置做为元数据中心的配置
         useRegistryAsMetadataCenterIfNecessary();
-
+        // 获取应用的配置信息
         ApplicationConfig applicationConfig = getApplication();
-
+        // 元数据配置类型 元数据类型， local 或 remote,，如果选择远程，则需要进一步指定元数据中心
         String metadataType = applicationConfig.getMetadataType();
         // FIXME, multiple metadata config support.
         Collection<MetadataReportConfig> metadataReportConfigs = configManager.getMetadataConfigs();
         if (CollectionUtils.isEmpty(metadataReportConfigs)) {
+            // 这个就是判断，如果选择远程，则需要进一步指定元数据中心，否则就抛出来异常
             if (REMOTE_METADATA_STORAGE_TYPE.equals(metadataType)) {
                 throw new IllegalStateException(
                         "No MetadataConfig found, Metadata Center address is required when 'metadata=remote' is enabled.");
             }
             return;
         }
-
+        // MetadataReport 实例的存储库对象获取
         MetadataReportInstance metadataReportInstance =
                 applicationModel.getBeanFactory().getBean(MetadataReportInstance.class);
         List<MetadataReportConfig> validMetadataReportConfigs = new ArrayList<>(metadataReportConfigs.size());
@@ -344,7 +345,9 @@ public class DefaultApplicationDeployer extends AbstractDeployer<ApplicationMode
                 validMetadataReportConfigs.add(metadataReportConfig);
             }
         }
+        // 初始化元数据
         metadataReportInstance.init(validMetadataReportConfigs);
+        // MetadataReport 实例的存储库对象初始化失败则抛出异常
         if (!metadataReportInstance.inited()) {
             throw new IllegalStateException(String.format(
                     "%s MetadataConfigs found, but none of them is valid.", metadataReportConfigs.size()));
@@ -490,12 +493,13 @@ public class DefaultApplicationDeployer extends AbstractDeployer<ApplicationMode
     }
 
     private void useRegistryAsMetadataCenterIfNecessary() {
-
+        // 配置缓存中查询元数据配置
         Collection<MetadataReportConfig> originMetadataConfigs = configManager.getMetadataConfigs();
+        // 配置存在则直接返回
         if (originMetadataConfigs.stream().anyMatch(m -> Objects.nonNull(m.getAddress()))) {
             return;
         }
-
+        // 配置不存在则从注册中心配置中获取，获取需要覆盖的元数据中心
         Collection<MetadataReportConfig> metadataConfigsToOverride = originMetadataConfigs.stream()
                 .filter(m -> Objects.isNull(m.getAddress()))
                 .collect(Collectors.toList());
@@ -506,18 +510,28 @@ public class DefaultApplicationDeployer extends AbstractDeployer<ApplicationMode
 
         MetadataReportConfig metadataConfigToOverride =
                 metadataConfigsToOverride.stream().findFirst().orElse(null);
-
+        // 查询是否有注册中心设置了默认配置isDefault，设置为true的注册中心则为默认注册中心列表，
+        // 如果没有注册中心设置为默认注册中心，则获取所有未设置默认配置的注册中心列表
         List<RegistryConfig> defaultRegistries = configManager.getDefaultRegistries();
         if (!defaultRegistries.isEmpty()) {
+            // 多注册中心遍历
             defaultRegistries.stream()
+                    // 筛选符合条件的注册中心 (筛选逻辑就是查看是否有对应协议的扩展支持)
                     .filter(this::isUsedRegistryAsMetadataCenter)
+                    // 注册中心配置映射为元数据中心，映射就是获取需要的配置
                     .map(registryConfig -> registryAsMetadataCenter(registryConfig, metadataConfigToOverride))
+                    // 将元数据中心配置存储在配置缓存中方便后续使用
                     .forEach(metadataReportConfig -> {
                         overrideMetadataReportConfig(metadataConfigToOverride, metadataReportConfig);
                     });
         }
     }
 
+    /**
+     * 覆盖元数据中心配置
+     * @param metadataConfigToOverride 原元数据中心配置
+     * @param metadataReportConfig 元数据中心配置
+     */
     private void overrideMetadataReportConfig(
             MetadataReportConfig metadataConfigToOverride, MetadataReportConfig metadataReportConfig) {
         if (metadataReportConfig.getId() == null) {

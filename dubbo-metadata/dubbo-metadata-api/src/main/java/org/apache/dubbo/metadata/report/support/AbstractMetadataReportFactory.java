@@ -49,9 +49,13 @@ public abstract class AbstractMetadataReportFactory implements MetadataReportFac
 
     @Override
     public MetadataReport getMetadataReport(URL url) {
+        // url值参考例子 zookeeper://127.0.0.1:2181?application=dubbo-demo-api-provider&client=&port=2181&protocol=zookeeper
+        // 如果存在 export 则移除
         url = url.setPath(MetadataReport.class.getName()).removeParameters(EXPORT_KEY, REFER_KEY);
+        // 生成元数据缓存key元数据维度 地址+名字
+        // 如: zookeeper://127.0.0.1:2181/org.apache.dubbo.metadata.report.MetadataReport
         String key = toMetadataReportKey(url);
-
+        // 缓存中查询 查到则直接返回
         MetadataReport metadataReport = serviceStoreMap.get(key);
         if (metadataReport != null) {
             return metadataReport;
@@ -60,12 +64,15 @@ public abstract class AbstractMetadataReportFactory implements MetadataReportFac
         // Lock the metadata access process to ensure a single instance of the metadata instance
         lock.lock();
         try {
+            // 双重校验锁在查一下
             metadataReport = serviceStoreMap.get(key);
             if (metadataReport != null) {
                 return metadataReport;
             }
+            // check 参数，查元数据报错是否抛出异常
             boolean check = url.getParameter(CHECK_KEY, true) && url.getPort() != 0;
             try {
+                // 关键模版方法，调用扩展实现的具体业务(创建元数据操作对象)
                 metadataReport = createMetadataReport(url);
             } catch (Exception e) {
                 if (!check) {
