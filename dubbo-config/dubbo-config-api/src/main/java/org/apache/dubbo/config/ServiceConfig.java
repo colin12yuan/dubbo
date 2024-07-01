@@ -294,10 +294,13 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
     public void init() {
         if (this.initialized.compareAndSet(false, true)) {
             // load ServiceListeners from extension
+            // 加载服务监听器
             ExtensionLoader<ServiceListener> extensionLoader = this.getExtensionLoader(ServiceListener.class);
             this.serviceListeners.addAll(extensionLoader.getSupportedExtensionInstances());
         }
+        // 服务提供者配置传递给元数据配置对象，一个服务提供者配置会有一个元数据配置，服务配置
         initServiceMetadata(provider);
+        // 元数据
         serviceMetadata.setServiceType(getInterfaceClass());
         serviceMetadata.setTarget(getRef());
         serviceMetadata.generateServiceKey();
@@ -305,6 +308,7 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
 
     @Override
     public void export(RegisterTypeEnum registerType) {
+        // 已经导出过服务直接放那会
         if (this.exported) {
             return;
         }
@@ -318,18 +322,22 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
         }
 
         synchronized (this) {
+            // 双重校验
             if (this.exported) {
                 return;
             }
-
+            // 配置是否刷新，前面初始化时候已经刷新过配置
             if (!this.isRefreshed()) {
                 this.refresh();
             }
+            // 服务导出配置配置为false则不导出
             if (this.shouldExport()) {
+                // 服务发布前初始化一下元数据对象
                 this.init();
 
                 if (shouldDelay()) {
                     // should register if delay export
+                    // 配置了服务的延迟发布配置则走延迟发布逻辑
                     doDelayExport();
                 } else if (Integer.valueOf(-1).equals(getDelay())
                         && Boolean.parseBoolean(ConfigurationUtils.getProperty(
@@ -527,16 +535,19 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
     }
 
     protected synchronized void doExport(RegisterTypeEnum registerType) {
+        // 取消发布
         if (unexported) {
             throw new IllegalStateException("The service " + interfaceClass.getName() + " has already unexported!");
         }
+        // 已经发布
         if (exported) {
             return;
         }
-
+        // 服务路径为空则设置为接口名，本例子中为 link.elastic.dubbo.entity.DemoService
         if (StringUtils.isEmpty(path)) {
             path = interfaceName;
         }
+        // 导出URL
         doExportUrls(registerType);
         exported();
     }
@@ -545,6 +556,7 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
     private void doExportUrls(RegisterTypeEnum registerType) {
         ModuleServiceRepository repository = getScopeModel().getServiceRepository();
         ServiceDescriptor serviceDescriptor;
+        // ref为服务实现类型
         final boolean serverService = ref instanceof ServerService;
         if (serverService) {
             serviceDescriptor = ((ServerService) ref).getServiceDescriptor();
@@ -554,13 +566,21 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
             }
             repository.registerService(serviceDescriptor);
         } else {
+            // 我们代码走这个逻辑注册服务，这个注册不是向注册中心注册，
+            // 这个是解析服务接口将服务方法等描述信息存放在了服务存储ModuleServiceRepository类型对象的成员变量services中
             serviceDescriptor = repository.registerService(getInterfaceClass());
         }
+        // 提供者领域模型，提供者领域模型封装了一些提供者需要的就基本属性同时内部解析封装方法信息 ProviderMethodModel 列表，
+        // 服务标识符 格式group/服务接:版本号
         providerModel = new ProviderModel(
                 serviceMetadata.getServiceKey(),
+                // 服务实现类
                 ref,
+                // 服务描述符 描述符里面包含了服务接口的方法信息，不过服务接口通过反射也可以拿到方法信息
                 serviceDescriptor,
+                // 当前所处模型
                 getScopeModel(),
+                // 当前服务接口的元数据对象
                 serviceMetadata,
                 interfaceClassLoader);
 
@@ -570,6 +590,12 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
         providerModel.setDestroyRunner(getDestroyRunner());
         repository.registerProvider(providerModel);
 
+        // 获取配置的注册中心列表，同时将注册中心配置转URL （在Dubbo中URL就是配置信息的一种形式）
+        // 这里会获取到两个由dubbo.application.register-mode 双注册配置决定
+        //注册中心 registry://127.0.0.1:2181/org.apache.dubbo.registry.RegistryService?application=dubbo-demo-api-provider&dubbo=2.0.2&pid=9008&registry=zookeeper&release=3.0.8&timestamp=1653703292768
+        //service-discovery-registry://8.131.79.126:2181/org.apache.dubbo.registry.RegistryService?application=dubbo-demo-api-provider&dubbo=2.0.2&pid=10275&registry=zookeeper&release=3.0.8&timestamp=1653704425920
+        //参数dubbo是dubbo协议的版本不是Dubbo版本 Dubbo RPC protocol version, for compatibility, it must not be between 2.0.10 ~ 2.6.2
+        //这里后面详细说下服务双注册 dubbo.application.register-mode
         List<URL> registryURLs = ConfigValidationUtils.loadRegistries(this, true);
 
         for (ProtocolConfig protocolConfig : protocols) {
@@ -578,8 +604,10 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
             // stub service will use generated service name
             if (!serverService) {
                 // In case user specified path, register service one more time to map it to path.
+                // 模块服务存储库ModuleServiceRepository存储服务接口信息
                 repository.registerService(pathKey, interfaceClass);
             }
+            // 导出根据协议导出配置到注册中心
             doExportUrlsFor1Protocol(protocolConfig, registryURLs, registerType);
         }
 
