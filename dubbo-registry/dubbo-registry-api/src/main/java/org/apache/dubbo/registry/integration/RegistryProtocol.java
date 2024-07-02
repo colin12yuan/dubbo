@@ -264,6 +264,7 @@ public class RegistryProtocol implements Protocol, ScopeModelAware {
 
         // url to registry
         final Registry registry = getRegistry(registryUrl);
+        // 需要向注册中心注册地址转换
         final URL registeredProviderUrl = customizeURL(providerUrl, registryUrl);
 
         // decide if we need to delay publish (provider itself and registry should both need to register)
@@ -329,6 +330,7 @@ public class RegistryProtocol implements Protocol, ScopeModelAware {
         return (ExporterChangeableWrapper<T>) bounds.computeIfAbsent(providerUrlKey, k -> new ConcurrentHashMap<>())
                 .computeIfAbsent(
                         registryUrlKey,
+                        // 代码中用的这个protocol对象是dubbo自动生成的适配器对象protocol$Adaptive 适配器对象会根据当前协议的参数来查询具体的协议扩展对象
                         s -> new ExporterChangeableWrapper<>((ReferenceCountExporter<T>) exporter, originInvoker));
     }
 

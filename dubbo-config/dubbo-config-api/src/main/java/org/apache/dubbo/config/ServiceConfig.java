@@ -556,7 +556,7 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
     private void doExportUrls(RegisterTypeEnum registerType) {
         ModuleServiceRepository repository = getScopeModel().getServiceRepository();
         ServiceDescriptor serviceDescriptor;
-        // ref为服务实现类型
+        // ref 为服务实现类型
         final boolean serverService = ref instanceof ServerService;
         if (serverService) {
             serviceDescriptor = ((ServerService) ref).getServiceDescriptor();
@@ -607,7 +607,7 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
                 // 模块服务存储库ModuleServiceRepository存储服务接口信息
                 repository.registerService(pathKey, interfaceClass);
             }
-            // 导出根据协议导出配置到注册中心
+            // 根据协议导出配置到注册中心
             doExportUrlsFor1Protocol(protocolConfig, registryURLs, registerType);
         }
 
@@ -616,17 +616,20 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
 
     private void doExportUrlsFor1Protocol(
             ProtocolConfig protocolConfig, List<URL> registryURLs, RegisterTypeEnum registerType) {
+        // 生成协议配置具体可见下图中的元数据配置中的 attachments
         Map<String, String> map = buildAttributes(protocolConfig);
 
         // remove null key and null value
         map.keySet().removeIf(key -> StringUtils.isEmpty(key) || StringUtils.isEmpty(map.get(key)));
         // init serviceMetadata attachments
+        // 协议配置放到元数据对象中
         serviceMetadata.getAttachments().putAll(map);
-
+        // 协议配置 + 默认协议配置转URL类型的配置存储
         URL url = buildUrl(protocolConfig, map);
 
         processServiceExecutor(url);
 
+        // 导出url
         exportUrl(url, registryURLs, registerType);
 
         initServiceMethodMetrics(url);
@@ -858,6 +861,15 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
         return url;
     }
 
+    /**
+     * 分为本地导出和注册中心导出
+     * // 参数url为协议配置url可以参考：
+     * 案例: dubbo://192.168.1.9:20880/link.elastic.dubbo.entity
+     * .DemoService?anyhost=true&application=dubbo-demo-api-provider&background=false&bind.ip=192.168.1.9&bind.port=20880&deprecated=false&dubbo=2.0.2&dynamic=true&generic=false&interface=link.elastic.dubbo.entity.DemoService&methods=sayHello,sayHelloAsync&pid=10953&release=3.0.8&side=provider&timestamp=1653705630518
+     * @param url
+     * @param registryURLs
+     * @param registerType
+     */
     private void exportUrl(URL url, List<URL> registryURLs, RegisterTypeEnum registerType) {
         String scope = url.getParameter(SCOPE_KEY);
         // don't export when none is configured
@@ -911,7 +923,9 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
 
     private URL exportRemote(URL url, List<URL> registryURLs, RegisterTypeEnum registerType) {
         if (CollectionUtils.isNotEmpty(registryURLs) && registerType != RegisterTypeEnum.NEVER_REGISTER) {
+            // 遍历所有注册地址与注册模式，逐个注册
             for (URL registryURL : registryURLs) {
+                // 为协议URL添加应用级注册service-discovery-registry参数service-name-mapping为true
                 if (SERVICE_REGISTRY_PROTOCOL.equals(registryURL.getProtocol())) {
                     url = url.addParameterIfAbsent(SERVICE_NAME_MAPPING_KEY, "true");
                 }
@@ -920,8 +934,9 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
                 if (LOCAL_PROTOCOL.equalsIgnoreCase(url.getProtocol())) {
                     continue;
                 }
-
+                // 为协议url 添加动态配置dynamic
                 url = url.addParameterIfAbsent(DYNAMIC_KEY, registryURL.getParameter(DYNAMIC_KEY));
+                // 监控配置
                 URL monitorUrl = ConfigValidationUtils.loadMonitor(this, registryURL);
                 if (monitorUrl != null) {
                     url = url.putAttribute(MONITOR_KEY, monitorUrl);
@@ -967,11 +982,12 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
                 || registerType == RegisterTypeEnum.AUTO_REGISTER_BY_DEPLOYER) {
             url = url.addParameter(REGISTER_KEY, false);
         }
-
+        // 这里是由adaptor扩展类型处理过的，我们直接看默认的类型javassist 对应JavassistProxyFactory代理工厂获取调用对象
         Invoker<?> invoker = proxyFactory.getInvoker(ref, (Class) interfaceClass, url);
         if (withMetaData) {
             invoker = new DelegateProviderMetaDataInvoker(invoker, this);
         }
+        // 这个使用了Adaptor扩展和Wrapper机制，可查看调用堆栈
         Exporter<?> exporter = protocolSPI.export(invoker);
         exporters
                 .computeIfAbsent(registerType, k -> new CopyOnWriteArrayList<>())
@@ -980,8 +996,10 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
 
     /**
      * always export injvm
+     * 本地调用使用了 injvm 协议，是一个伪协议，它不开启端口，不发起远程调用，只在 JVM 内直接关联，但执行 Dubbo 的 Filter 链。
      */
     private void exportLocal(URL url) {
+        // 协议转为injvm 代表本地导出，host为127.0.0.1
         URL local = URLBuilder.from(url)
                 .setProtocol(LOCAL_PROTOCOL)
                 .setHost(LOCALHOST_VALUE)

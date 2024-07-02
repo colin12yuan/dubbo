@@ -74,6 +74,7 @@ public class ProtocolListenerWrapper implements Protocol {
                     .getBeanFactory()
                     .getBean(InjvmExporterListener.class));
         }
+        // 先导出对象，再创建过滤器包装对象，执行监听器逻辑
         return new ListenerExporterWrapper<>(protocol.export(invoker), Collections.unmodifiableList(exporterListeners));
     }
 

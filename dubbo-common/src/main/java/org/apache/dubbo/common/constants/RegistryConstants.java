@@ -68,11 +68,11 @@ public interface RegistryConstants {
 
     String DUBBO_PUBLISH_INSTANCE_DEFAULT_KEY = "dubbo.application.publish-instance";
 
-    String DEFAULT_REGISTER_MODE_INTERFACE = "interface";
+    String DEFAULT_REGISTER_MODE_INTERFACE = "interface"; // 接口级注册
 
-    String DEFAULT_REGISTER_MODE_INSTANCE = "instance";
+    String DEFAULT_REGISTER_MODE_INSTANCE = "instance"; // 应用级注册
 
-    String DEFAULT_REGISTER_MODE_ALL = "all";
+    String DEFAULT_REGISTER_MODE_ALL = "all"; // 接口级别和应用级都注册
     /**
      * The parameter key of Dubbo Registry type
      *

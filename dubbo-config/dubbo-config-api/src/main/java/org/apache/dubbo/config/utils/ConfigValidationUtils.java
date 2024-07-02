@@ -236,12 +236,23 @@ public class ConfigValidationUtils {
         return genCompatibleRegistries(interfaceConfig.getScopeModel(), registryList, provider);
     }
 
+    /**
+     *
+     * @param scopeModel
+     * @param registryList 配置的注册中心列表
+     * 例如：registry://127.0.0.1:2181/org.apache.dubbo.registry.RegistryService?application=dubbo-demo-api-provider&dubbo=2.0.2&pid=9008&registry=zookeeper&release=3.0.8&timestamp=1653703292768
+     * @param provider 是否为服务提供者 这里Demo为true
+     * @return
+     */
     private static List<URL> genCompatibleRegistries(ScopeModel scopeModel, List<URL> registryList, boolean provider) {
         List<URL> result = new ArrayList<>(registryList.size());
+        // 遍历所有的注册中心，为每个注册中心增加兼容的服务发现注册中心地址配置
         registryList.forEach(registryURL -> {
             if (provider) {
                 // for registries enabled service discovery, automatically register interface compatible addresses.
                 String registerMode;
+                // 注册协议配置了service-discovery-registry 走这个逻辑
+                // 前面这个逻辑是直接接给result结果中添加应用级注册，如果是all配置则增加接口级注册信息
                 if (SERVICE_REGISTRY_PROTOCOL.equals(registryURL.getProtocol())) {
                     registerMode = registryURL.getParameter(
                             REGISTER_MODE_KEY,
@@ -250,7 +261,9 @@ public class ConfigValidationUtils {
                     if (!isValidRegisterMode(registerMode)) {
                         registerMode = DEFAULT_REGISTER_MODE_INSTANCE;
                     }
+                    // 这里配置的就是应用级配置，则先添加应用级地址
                     result.add(registryURL);
+                    // 再根据条件判断是否添加接口级注册中心地址
                     if (DEFAULT_REGISTER_MODE_ALL.equalsIgnoreCase(registerMode)
                             && registryNotExists(registryURL, registryList, REGISTRY_PROTOCOL)) {
                         URL interfaceCompatibleRegistryURL = URLBuilder.from(registryURL)
@@ -260,6 +273,8 @@ public class ConfigValidationUtils {
                         result.add(interfaceCompatibleRegistryURL);
                     }
                 } else {
+                    // 正常情况下我们的配置会走这个逻辑
+                    // 获取服务注册的注册模式，配置为 dubbo.application.register-mode 默认值为all，既注册接口数据又注册应用级信息
                     registerMode = registryURL.getParameter(
                             REGISTER_MODE_KEY,
                             ConfigurationUtils.getCachedDynamicProperty(
@@ -267,6 +282,7 @@ public class ConfigValidationUtils {
                     if (!isValidRegisterMode(registerMode)) {
                         registerMode = DEFAULT_REGISTER_MODE_INTERFACE;
                     }
+                    // 根据逻辑条件判断是否添加应用级注册中心地址
                     if ((DEFAULT_REGISTER_MODE_INSTANCE.equalsIgnoreCase(registerMode)
                                     || DEFAULT_REGISTER_MODE_ALL.equalsIgnoreCase(registerMode))
                             && registryNotExists(registryURL, registryList, SERVICE_REGISTRY_PROTOCOL)) {
@@ -276,7 +292,7 @@ public class ConfigValidationUtils {
                                 .build();
                         result.add(serviceDiscoveryRegistryURL);
                     }
-
+                    // 根据逻辑条件判断是否添加接口级注册中心地址
                     if (DEFAULT_REGISTER_MODE_INTERFACE.equalsIgnoreCase(registerMode)
                             || DEFAULT_REGISTER_MODE_ALL.equalsIgnoreCase(registerMode)) {
                         result.add(registryURL);
