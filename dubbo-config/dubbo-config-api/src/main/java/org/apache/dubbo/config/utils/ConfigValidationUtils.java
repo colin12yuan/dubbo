@@ -240,7 +240,7 @@ public class ConfigValidationUtils {
      *
      * @param scopeModel
      * @param registryList 配置的注册中心列表
-     * 例如：registry://127.0.0.1:2181/org.apache.dubbo.registry.RegistryService?application=dubbo-demo-api-provider&dubbo=2.0.2&pid=9008&registry=zookeeper&release=3.0.8&timestamp=1653703292768
+     * 例如：registry://127.0.0.1:2181/org.apache.dubbo.registry.RegistryService?application=dubbo-demo-api-provider&dubbo=2.0.2&executor-management-mode=isolation&file-cache=true&pid=19129&registry=zookeeper&timestamp=1720006431357
      * @param provider 是否为服务提供者 这里Demo为true
      * @return
      */
