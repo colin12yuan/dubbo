@@ -982,7 +982,7 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
                 || registerType == RegisterTypeEnum.AUTO_REGISTER_BY_DEPLOYER) {
             url = url.addParameter(REGISTER_KEY, false);
         }
-        // 这里是由adaptor扩展类型处理过的，我们直接看默认的类型javassist 对应JavassistProxyFactory代理工厂获取调用对象
+        // 这里是由adaptor扩展类型处理过的，我们直接看默认的类型 javassist 对应JavassistProxyFactory代理工厂获取调用对象
         Invoker<?> invoker = proxyFactory.getInvoker(ref, (Class) interfaceClass, url);
         if (withMetaData) {
             invoker = new DelegateProviderMetaDataInvoker(invoker, this);

@@ -121,7 +121,7 @@ public class ExtensionLoader<T> {
     private final ConcurrentMap<Class<?>, String> cachedNames = new ConcurrentHashMap<>();
 
     private final Holder<Map<String, Class<?>>> cachedClasses = new Holder<>();
-
+    // 扩展名称 -> 扩展实现类上 Activate 注解信息
     private final Map<String, Object> cachedActivates = Collections.synchronizedMap(new LinkedHashMap<>());
     private final Map<String, Set<String>> cachedActivateGroups = Collections.synchronizedMap(new LinkedHashMap<>());
     private final Map<String, String[][]> cachedActivateValues = Collections.synchronizedMap(new LinkedHashMap<>());
@@ -332,10 +332,26 @@ public class ExtensionLoader<T> {
 
     /**
      * Get activate extensions.
+     * 1、指定名称的扩展激活
+     * 2、分组匹配且 URL 参数和匹配分组的自动激活扩展的激活注解配置匹配。
+     *
+     * 这里解释 value 的作用。加载指定名称的扩展。可以影响分组匹配激活扩展的顺序
+     * 这里 ext1, ext2 可以是普通扩展的扩展名
+     * values[ext1, default, ext2] 则 ext1 对应扩展；分组匹配且 URL 参数和匹配分组的自动激活扩展的激活注解配置匹配；ext2 对应扩展
+     * 这里 default 指所有 分组匹配且URL参数和自动激活扩展的激活注解配置匹配的自动激活扩展。
+     * 若 ext1 是匹配的自动激活扩展，则 default 匹配的扩展会被过滤掉，保证扩展不会被多次加载。
+     *
+     * values[ext1, -default, ext2] 则 ext1 对应扩展；ext2 对应扩展
+     * 这里 -default 即排除分组匹配且参数匹配的扩展
+     *
+     * values[ext1, ext2] 则 分组匹配且 URL 参数和匹配分组的自动激活扩展的激活注解配置匹配和 ext1, ext2
+     * 根据 Activate 中 order 排序，若 ext1、ext2 是普通扩展，则会放到最前面
+     *
+     * 加载激活扩展本质：根据扩展名加载；根据分组加载匹配的扩展（URL 中参数和激活注解 value 可配置的值是否相等）
      *
      * @param url    url
-     * @param values extension point names
-     * @param group  group
+     * @param values extension point names。指定名称的扩展激活
+     * @param group  group。分组匹配，且 URL 参数和匹配分组的自动激活扩展激活。
      * @return extension list which are activated
      * @see org.apache.dubbo.common.extension.Activate
      */
@@ -345,13 +361,13 @@ public class ExtensionLoader<T> {
         // solve the bug of using @SPI's wrapper method to report a null pointer exception.
         // 创建个有序的Map集合,用来对扩展进行排序
         Map<Class<?>, T> activateExtensionsMap = new TreeMap<>(activateComparator);
-        // 初始化扩展名字,指定了扩展名字values不为空
+        // 初始化扩展名字，指定了扩展名字values不为空
         List<String> names = values == null
                 ? new ArrayList<>(0)
                 : Arrays.stream(values).map(StringUtils::trim).collect(Collectors.toList());
         // 扩展名字使用Set集合进行去重
         Set<String> namesSet = new HashSet<>(names);
-        // 参数常量是 -default 扩展名字是否不包含默认的
+        // 参数常量是 -default 扩展名字是否不包含默认的；
         if (!namesSet.contains(REMOVE_VALUE_PREFIX + DEFAULT_KEY)) {
             if (cachedActivateGroups.size() == 0) {
                 synchronized (cachedActivateGroups) {
@@ -375,7 +391,7 @@ public class ExtensionLoader<T> {
                             } else {
                                 continue;
                             }
-                            // 缓存分组值
+                            // 缓存分组值。扩展名 -> 分组值
                             cachedActivateGroups.put(name, new HashSet<>(Arrays.asList(activateGroup)));
                             String[][] keyPairs = new String[activateValue.length][];
                             // 遍历指定的激活扩展的扩展名字列表
@@ -390,7 +406,7 @@ public class ExtensionLoader<T> {
                                     keyPairs[i][0] = activateValue[i];
                                 }
                             }
-                            // 缓存指定扩展信息
+                            // 缓存指定扩展信息。扩展名 -> 扩展自动激活值（）
                             cachedActivateValues.put(name, keyPairs);
                         }
                     }
@@ -398,6 +414,7 @@ public class ExtensionLoader<T> {
             }
 
             // traverse all cached extensions
+            // 分组匹配上，但是扩展名称没有匹配上，则根据 URL 参数和自动激活配置，决定自动激活插件是否激活
             cachedActivateGroups.forEach((name, activateGroup) -> {
                 if (isMatchGroup(group, activateGroup)
                         && !namesSet.contains(name)
@@ -474,6 +491,20 @@ public class ExtensionLoader<T> {
         return false;
     }
 
+    /**
+     * 判断是否激活
+     * eg: @Active(value="key1:value1, key2") 插件对应激活配置
+     *
+     * URL.valueOf("dubbo://localhost:20880?myFilter=true")
+     * 1、自动结果扩展配置激活值（变量:值），则从 URL 中获取变量是否相等，相等则激活
+     * 2、自动结果扩展配置激活值（变量），则从 URL 中获取变量，不为空则激活
+     *
+     * 若自动激活注解上存在多个激活配置，则满足一个即可。
+     *
+     * @param keyPairs 扩展自动激活配置信息
+     * @param url url
+     * @return
+     */
     private boolean isActive(String[][] keyPairs, URL url) {
         if (keyPairs.length == 0) {
             return true;
@@ -491,8 +522,16 @@ public class ExtensionLoader<T> {
 
             String realValue = url.getParameter(key);
             if (StringUtils.isEmpty(realValue)) {
+                //eg1: URLParam.parse("aaaM.method1=aaaV&bbbM.method2=bbbV"); key = method1 则获取值为 aaaV
+                //eg2: URLParam.parse("aaaM.method1=aaaV&aaaM2.method1=aaaV2&bbbM.method2=bbbV");
+                // 则 key = method1 时有两 aaaM.method1=aaaV&aaaM2.method1=aaaV2，取值时取第一个
+                // 则获取值为 aaaV
+                //eg3: URLParam.parse("methods=aaaM2&aaaM.method1=aaaV&aaaM2.method1=aaaV2&bbbM.method2=bbbV");
+                // 则 key = method1 时有两 aaaM.method1=aaaV&aaaM2.method1=aaaV2，但请求中 methods 参数值指定取 aaaM2，则值为 aaaV2
                 realValue = url.getAnyMethodParameter(key);
             }
+            // 1、自动结果扩展配置激活值（变量:值），则从 URL 中获取变量是否相等，相等则激活
+            // 2、自动结果扩展配置激活值（变量），则从 URL 中获取变量，不为空则激活
             if ((keyValue != null && keyValue.equals(realValue))
                     || (keyValue == null && ConfigUtils.isNotEmpty(realValue))) {
                 return true;
