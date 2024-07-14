@@ -242,6 +242,8 @@ public class RegistryProtocol implements Protocol, ScopeModelAware {
 
     @Override
     public <T> Exporter<T> export(final Invoker<T> originInvoker) throws RpcException {
+        // service-discovery-registry://192.168.200.128:2181/org.apache.dubbo.registry.RegistryService?application=dubbo-demo-api-provider&dubbo=2.0.2&executor-management-mode=isolation&file-cache=true&pid=1106&register=false&registry=zookeeper&timestamp=1720949034472
+        // 注册中心地址
         URL registryUrl = getRegistryUrl(originInvoker);
         // url to export locally
         URL providerUrl = getProviderUrl(originInvoker);
@@ -251,6 +253,7 @@ public class RegistryProtocol implements Protocol, ScopeModelAware {
         //  the same service. Because the subscribed is cached key with the name of the service, it causes the
         //  subscription information to cover.
         final URL overrideSubscribeUrl = getSubscribedOverrideUrl(providerUrl);
+        // override 配置
         final OverrideListener overrideSubscribeListener = new OverrideListener(overrideSubscribeUrl, originInvoker);
         Map<URL, Set<NotifyListener>> overrideListeners =
                 getProviderConfigurationListener(overrideSubscribeUrl).getOverrideListeners();
