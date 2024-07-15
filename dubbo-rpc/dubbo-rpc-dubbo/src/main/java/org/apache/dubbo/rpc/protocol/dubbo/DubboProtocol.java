@@ -357,7 +357,7 @@ public class DubboProtocol extends AbstractProtocol {
                 }
             }
         }
-
+        // 创建服务开启服务端口
         openServer(url);
         optimizeSerialization(url);
 
@@ -369,6 +369,7 @@ public class DubboProtocol extends AbstractProtocol {
         // find server.
         String key = url.getAddress();
         // client can export a service which only for server to invoke
+        // 默认提供者开启服务，消费者是不能开启服务的
         boolean isServer = url.getParameter(IS_SERVER_KEY, true);
 
         if (isServer) {
