@@ -91,7 +91,9 @@ public class ServiceDiscoveryRegistry extends FailbackRegistry {
 
     public ServiceDiscoveryRegistry(URL registryURL, ApplicationModel applicationModel) {
         super(registryURL);
+        // 根据url创建一个服务发现对象类型为ServiceDiscovery
         this.serviceDiscovery = createServiceDiscovery(registryURL);
+        // 这个类型为是serviceNameMapping类型是MetadataServiceNameMapping类型
         this.serviceNameMapping =
                 (AbstractServiceNameMapping) ServiceNameMapping.getDefaultExtension(registryURL.getScopeModel());
         super.applicationModel = applicationModel;
@@ -129,7 +131,9 @@ public class ServiceDiscoveryRegistry extends FailbackRegistry {
      * @return
      */
     private ServiceDiscovery getServiceDiscovery(URL registryURL) {
+        // 服务发现工厂对象的获取这里是ServiceDiscoveryFactory类型
         ServiceDiscoveryFactory factory = getExtension(registryURL);
+        // 服务发现工厂对象获取服务发现对象
         return factory.getServiceDiscovery(registryURL);
     }
 

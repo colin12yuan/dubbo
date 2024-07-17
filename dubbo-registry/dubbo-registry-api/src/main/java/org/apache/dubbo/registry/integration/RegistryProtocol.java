@@ -265,7 +265,8 @@ public class RegistryProtocol implements Protocol, ScopeModelAware {
         // export invoker
         final ExporterChangeableWrapper<T> exporter = doLocalExport(originInvoker, providerUrl);
 
-        // url to registry
+        // url to registry 注册服务对外的接口
+        // 如果url为service-discovery-registry发现，则这个实现类型为ServiceDiscoveryRegistry
         final Registry registry = getRegistry(registryUrl);
         // 需要向注册中心注册地址转换
         final URL registeredProviderUrl = customizeURL(providerUrl, registryUrl);
@@ -273,6 +274,8 @@ public class RegistryProtocol implements Protocol, ScopeModelAware {
         // decide if we need to delay publish (provider itself and registry should both need to register)
         boolean register = providerUrl.getParameter(REGISTER_KEY, true) && registryUrl.getParameter(REGISTER_KEY, true);
         if (register) {
+            // 这里有两种情况，接口级注册会将接口级服务提供者数据直接注册到Zookeper上面，
+            // 服务发现（应用级注册）这里仅仅会将注册数据转换为服务元数据等后面来发布元数据
             register(registry, registeredProviderUrl);
         }
 
@@ -458,9 +461,11 @@ public class RegistryProtocol implements Protocol, ScopeModelAware {
      * @return
      */
     protected Registry getRegistry(final URL registryUrl) {
+        // 这里分为两步先获取注册中心工厂对象
         RegistryFactory registryFactory = ScopeModelUtil.getExtensionLoader(
                         RegistryFactory.class, registryUrl.getScopeModel())
                 .getAdaptiveExtension();
+        // 使用注册中心工厂对象获取注册中心操作对象
         return registryFactory.getRegistry(registryUrl);
     }
 

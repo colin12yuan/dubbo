@@ -33,10 +33,14 @@ public class ServiceDiscoveryRegistryFactory extends AbstractRegistryFactory {
 
     @Override
     protected Registry createRegistry(URL url) {
+        // 判断 url 是否是这个前缀：service-discovery-registry
         if (UrlUtils.hasServiceDiscoveryRegistryProtocol(url)) {
+            // 切换下协议：将服务发现协议切换为配置的注册中心协议这里是Zookeeper如下：
+            // url:
             String protocol = url.getParameter(REGISTRY_KEY, DEFAULT_REGISTRY);
             url = url.setProtocol(protocol).removeParameter(REGISTRY_KEY);
         }
+        // 创建服务发现注册中心对象对象
         return new ServiceDiscoveryRegistry(url, applicationModel);
     }
 }

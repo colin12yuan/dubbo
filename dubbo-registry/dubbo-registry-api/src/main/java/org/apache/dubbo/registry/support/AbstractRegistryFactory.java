@@ -58,7 +58,7 @@ public abstract class AbstractRegistryFactory implements RegistryFactory, ScopeM
             throw new IllegalStateException("Unable to fetch RegistryManager from ApplicationModel BeanFactory. "
                     + "Please check if `setApplicationModel` has been override.");
         }
-
+        // 销毁状态直接返回
         Registry defaultNopRegistry = registryManager.getDefaultNopRegistryIfDestroyed();
         if (null != defaultNopRegistry) {
             return defaultNopRegistry;
@@ -71,9 +71,11 @@ public abstract class AbstractRegistryFactory implements RegistryFactory, ScopeM
                 .removeAttribute(EXPORT_KEY)
                 .removeAttribute(REFER_KEY)
                 .build();
-
+        // url:
+        // 这个 key 为:
         String key = createRegistryCacheKey(url);
         Registry registry = null;
+        // check 配置，是否检查注册中心连通 默认为true
         boolean check = url.getParameter(CHECK_KEY, true) && url.getPort() != 0;
 
         // Lock the registry access process to ensure a single instance of the registry
@@ -81,17 +83,19 @@ public abstract class AbstractRegistryFactory implements RegistryFactory, ScopeM
         try {
             // double check
             // fix https://github.com/apache/dubbo/issues/7265.
+            // 锁内检查是否销毁的逻辑
             defaultNopRegistry = registryManager.getDefaultNopRegistryIfDestroyed();
             if (null != defaultNopRegistry) {
                 return defaultNopRegistry;
             }
-
+            // 锁内检查是否缓存中存在存在则直接返回
             registry = registryManager.getRegistry(key);
             if (registry != null) {
                 return registry;
             }
 
             // create registry by spi/ioc
+            // 使用url创建注册中心操作的逻辑
             registry = createRegistry(url);
             if (check && registry == null) {
                 throw new IllegalStateException("Can not create registry " + url);

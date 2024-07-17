@@ -403,7 +403,7 @@ public class DubboProtocol extends AbstractProtocol {
                 .addParameterIfAbsent(HEARTBEAT_KEY, String.valueOf(DEFAULT_HEARTBEAT))
                 .addParameter(CODEC_KEY, DubboCodec.NAME)
                 .build();
-
+        // 这里服务端使用的网络库这里是默认值 netty
         String transporter = url.getParameter(SERVER_KEY, DEFAULT_REMOTING_SERVER);
         if (StringUtils.isNotEmpty(transporter)
                 && !url.getOrDefaultFrameworkModel()
@@ -411,9 +411,10 @@ public class DubboProtocol extends AbstractProtocol {
                         .hasExtension(transporter)) {
             throw new RpcException("Unsupported server type: " + transporter + ", url: " + url);
         }
-
+        // dubbo 交换器层对象创建
         ExchangeServer server;
         try {
+            // 这里通过绑定url和请求处理器来创建交换器对象
             server = Exchangers.bind(url, requestHandler);
         } catch (RemotingException e) {
             throw new RpcException("Fail to start server(url: " + url + ") " + e.getMessage(), e);
