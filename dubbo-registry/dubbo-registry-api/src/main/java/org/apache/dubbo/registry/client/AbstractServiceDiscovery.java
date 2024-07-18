@@ -299,6 +299,7 @@ public abstract class AbstractServiceDiscovery implements ServiceDiscovery {
 
     @Override
     public void register(URL url) {
+        // 用来操作元数据的
         metadataInfo.addService(url);
     }
 
