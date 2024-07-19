@@ -977,6 +977,7 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
         if (!url.getParameter(REGISTER_KEY, true)) {
             registerType = RegisterTypeEnum.MANUAL_REGISTER;
         }
+        // 设置暴露服务时，是否需要延迟发布。延迟发布，可以防止服务在所有服务启动之前被调用。
         if (registerType == RegisterTypeEnum.NEVER_REGISTER
                 || registerType == RegisterTypeEnum.MANUAL_REGISTER
                 || registerType == RegisterTypeEnum.AUTO_REGISTER_BY_DEPLOYER) {
