@@ -242,8 +242,9 @@ public class RegistryProtocol implements Protocol, ScopeModelAware {
 
     @Override
     public <T> Exporter<T> export(final Invoker<T> originInvoker) throws RpcException {
-        // service-discovery-registry://192.168.200.128:2181/org.apache.dubbo.registry.RegistryService?application=dubbo-demo-api-provider&dubbo=2.0.2&executor-management-mode=isolation&file-cache=true&pid=1106&register=false&registry=zookeeper&timestamp=1720949034472
-        // 注册中心地址
+        // 应用级：注册中心地址 service-discovery-registry://192.168.200.128:2181/org.apache.dubbo.registry
+        // .RegistryService?application=dubbo-demo-api-provider&dubbo=2.0.2&executor-management-mode=isolation&file-cache=true&pid=1106&register=false&registry=zookeeper&timestamp=1720949034472
+        // 接口级：注册中心地址 InterfaceCompatibleRegistryProtocol#getRegistryUrl
         URL registryUrl = getRegistryUrl(originInvoker);
         // url to export locally
         URL providerUrl = getProviderUrl(originInvoker);
@@ -1050,6 +1051,7 @@ public class RegistryProtocol implements Protocol, ScopeModelAware {
         @Override
         public void register() {
             if (registered.compareAndSet(false, true)) {
+                // 如果接口级地址注册 InterfaceCompatibleRegistryProtocol#getRegistryUrl
                 URL registryUrl = getRegistryUrl(originInvoker);
                 Registry registry = getRegistry(registryUrl);
                 RegistryProtocol.register(registry, getRegisterUrl());
