@@ -896,6 +896,7 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
 
                 url = exportRemote(url, registryURLs, registerType);
                 if (!isGeneric(generic) && !getScopeModel().isInternal()) {
+                    // 元数据上报-发布服务定义：若不是泛化调用且内部调用，通过元数据上报，发布服务定义
                     MetadataUtils.publishServiceDefinition(url, providerModel.getServiceModel(), getApplicationModel());
                 }
 

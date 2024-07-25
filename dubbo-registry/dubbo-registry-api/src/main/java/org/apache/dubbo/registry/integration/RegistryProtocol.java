@@ -297,6 +297,11 @@ public class RegistryProtocol implements Protocol, ScopeModelAware {
                 .convert(Boolean.class, ENABLE_26X_CONFIGURATION_LISTEN, true)) {
             if (!registry.isServiceDiscovery()) {
                 // Deprecated! Subscribe to override rules in 2.6.x or before.
+                // 接口级注册地址时: registry -> 获取时协议替换为注册中心协议
+                // registryUrl 接口级注册地址: zookeeper://127.0.0.1:2181/org.apache.dubbo.registry
+                // .RegistryService?application=dubbo-demo-api-provider&dubbo=2.0.2&executor-management-mode=isolation&file-cache=true&pid=22814&register=false&timestamp=1721906797969
+                // overrideSubscribeUrl: provider://198.18.0.1:20880/org.apache.dubbo.demo
+                // .DemoService?anyhost=true&application=dubbo-demo-api-provider&background=false&bind.ip=198.18.0.1&bind.port=20880&category=configurators&check=false&deprecated=false&dubbo=2.0.2&dynamic=true&executor-management-mode=isolation&file-cache=true&generic=false&interface=org.apache.dubbo.demo.DemoService&ipv6=fc00:1234:ffff:0:0:0:0:10&methods=sayHello,sayHelloAsync&pid=22814&prefer.serialization=fastjson2,hessian2&service-name-mapping=true&side=provider&timestamp=1721906803448
                 registry.subscribe(overrideSubscribeUrl, overrideSubscribeListener);
             }
         }

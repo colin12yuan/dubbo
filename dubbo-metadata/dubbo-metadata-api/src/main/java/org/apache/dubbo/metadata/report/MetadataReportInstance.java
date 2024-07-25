@@ -110,7 +110,7 @@ public class MetadataReportInstance implements Disposable {
         //        RegistryConfig registryConfig = applicationModel.getConfigManager().getRegistry(relatedRegistryId)
         //                .orElseThrow(() -> new IllegalStateException("Registry id " + relatedRegistryId + " does not
         // exist."));
-        // 从元数据工厂中获取元数据
+        // 从元数据工厂中获取元数据上报实例
         MetadataReport metadataReport = metadataReportFactory.getMetadataReport(url);
         if (metadataReport != null) {
             metadataReports.put(getRelatedRegistryId(config, url), metadataReport);
