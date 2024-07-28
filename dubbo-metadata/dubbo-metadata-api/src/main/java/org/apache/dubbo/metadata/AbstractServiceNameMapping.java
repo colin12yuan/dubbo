@@ -62,6 +62,7 @@ public abstract class AbstractServiceNameMapping implements ServiceNameMapping {
         if (application.isPresent()) {
             enableFileCache = Boolean.TRUE.equals(application.get().getEnableFileCache()) ? true : false;
         }
+        // 这个是元数据缓存信息管理的类型，缓存文件使用LRU策略  感兴趣的可以详细看看
         this.mappingCacheManager = new MappingCacheManager(
                 enableFileCache,
                 applicationModel.tryGetApplicationName(),

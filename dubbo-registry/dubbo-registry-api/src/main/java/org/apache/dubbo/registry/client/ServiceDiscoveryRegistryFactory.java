@@ -36,10 +36,12 @@ public class ServiceDiscoveryRegistryFactory extends AbstractRegistryFactory {
         // 判断 url 是否是这个前缀：service-discovery-registry
         if (UrlUtils.hasServiceDiscoveryRegistryProtocol(url)) {
             // 切换下协议：将服务发现协议切换为配置的注册中心协议这里是Zookeeper如下：
-            // url:
+            // service-discovery-registry://注册中心地址/
+            // url: service-discovery-registry://192.168.200.128:2181/org.apache.dubbo.registry.RegistryService?application=dubbo-demo-api-provider&dubbo=2.0.2&executor-management-mode=isolation&file-cache=true&interface=org.apache.dubbo.registry.RegistryService&pid=81729&register=false&registry=zookeeper
             String protocol = url.getParameter(REGISTRY_KEY, DEFAULT_REGISTRY);
             url = url.setProtocol(protocol).removeParameter(REGISTRY_KEY);
         }
+        // zookeeper://192.168.200.128:2181/org.apache.dubbo.registry.RegistryService?application=dubbo-demo-api-provider&dubbo=2.0.2&executor-management-mode=isolation&file-cache=true&interface=org.apache.dubbo.registry.RegistryService&pid=81729&register=false
         // 创建服务发现注册中心对象对象
         return new ServiceDiscoveryRegistry(url, applicationModel);
     }

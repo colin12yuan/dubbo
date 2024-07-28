@@ -184,6 +184,10 @@ public class MetadataInfo implements Serializable {
      * Usage of this method is strictly restricted to certain points such as when during registration. Always try to use {@link this#getRevision()} instead.
      */
     public synchronized String calAndGetRevision() {
+        // 这个方法其实比较重要，决定了什么时候会更新元数据，
+        // Dubbo 使用了一种 Hash 验证的方式将元数据转 MD5 值与之前的存在的版本号（也是元数据转MD5得到的）
+        // 如果数据发生了变更则MD5值会发生变化,以此来更新元数据，不过发生了MD5冲突的话就会导致配置不更新这个冲突的概率非常小。
+        // 好了直接来看代码吧： MetadataInfo类型的calAndGetRevision方法：
         if (revision != null && !updated) {
             return revision;
         }

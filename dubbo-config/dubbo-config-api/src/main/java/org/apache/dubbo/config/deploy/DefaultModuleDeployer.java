@@ -190,6 +190,7 @@ public class DefaultModuleDeployer extends AbstractDeployer<ModuleModel> impleme
             // if no async export/refer services, just set started
             if (asyncExportingFutures.isEmpty() && asyncReferringFutures.isEmpty()) {
                 // publish module started event
+                // 在这个方法中会去发布服务元数据信息
                 onModuleStarted();
 
                 // register services to registry
@@ -363,9 +364,12 @@ public class DefaultModuleDeployer extends AbstractDeployer<ModuleModel> impleme
     }
 
     private void onModuleStarted() {
+        // 状态判断是否为启动中如果是则将状态设置为STARTED
         if (isStarting()) {
+            // 先修改状态
             setStarted();
             logger.info(getIdentifier() + " has started.");
+            // 状态修改成功之后开始通知应用程序发布器模块发布器启动成功了
             applicationDeployer.notifyModuleChanged(moduleModel, DeployState.STARTED);
         }
     }

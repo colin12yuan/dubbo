@@ -75,11 +75,21 @@ public class ExporterDeployListener implements ApplicationDeployListener, Priori
     @Override
     public synchronized void onModuleStarted(ApplicationModel applicationModel) {
         // start metadata service exporter
+        // MetadataServiceDelegation 类型为实现提供远程 RPC 服务以方便元数据信息的查询功能的类型。
         MetadataServiceDelegation metadataService =
                 applicationModel.getBeanFactory().getOrRegisterBean(MetadataServiceDelegation.class);
         if (metadataServiceExporter == null) {
             metadataServiceExporter = new ConfigurableMetadataServiceExporter(applicationModel, metadataService);
             // fixme, let's disable local metadata service export at this moment
+            /* metadata-type
+             * metadata 传递方式，是以 Provider 视角而言的，Consumer 侧配置无效，可选值有：
+             * remote - Provider 把 metadata 放到远端注册中心，Consumer 从注册中心获取。
+             * local - Provider 把 metadata 放在本地，Consumer 从 Provider 处直接获取 。
+             * 可以看到默认的local配置元数据信息的获取是由消费者从提供者拉的，
+             * 那提供者怎么拉取对应服务的元数据信息那就要要用到这个博客说到的MetadataService服务，
+             * 传递方式为 remote 的方式其实就要依赖元数据中心了相对来说增加了元数据中心的压力 */
+            // 默认我们是没有配置这个元数据类型的，这里元数据类型默认为 local，条件不是 remote 则处理
+            // 注册模式：若是接口级注册模式，则不需要元数据中心暴露服务元数据信息。接口注册模式为 dubbo 2.6.x 及以前注册方式。
             if (!REMOTE_METADATA_STORAGE_TYPE.equals(getMetadataType(applicationModel))
                     && !INTERFACE_REGISTER_MODE.equals(getRegisterMode(applicationModel))) {
                 metadataServiceExporter.export();

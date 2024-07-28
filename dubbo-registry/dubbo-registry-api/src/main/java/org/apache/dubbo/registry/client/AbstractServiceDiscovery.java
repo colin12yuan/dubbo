@@ -81,7 +81,10 @@ public abstract class AbstractServiceDiscovery implements ServiceDiscovery {
     protected ApplicationModel applicationModel;
 
     public AbstractServiceDiscovery(ApplicationModel applicationModel, URL registryURL) {
+        // 调用重载的构造器
         this(applicationModel, applicationModel.getApplicationName(), registryURL);
+
+        //
         MetadataReportInstance metadataReportInstance =
                 applicationModel.getBeanFactory().getBean(MetadataReportInstance.class);
         metadataType = metadataReportInstance.getMetadataType();
@@ -96,8 +99,12 @@ public abstract class AbstractServiceDiscovery implements ServiceDiscovery {
         this.applicationModel = applicationModel;
         this.serviceName = serviceName;
         this.registryURL = registryURL;
+        // 服务元数据类：用来封装元数据信息
         this.metadataInfo = new MetadataInfo(serviceName);
+        // 是否本地缓存配置
         boolean localCacheEnabled = registryURL.getParameter(REGISTRY_LOCAL_FILE_CACHE_ENABLED, true);
+        // 这个是元数据缓存信息管理的类型，缓存文件使用 LRU 策略  感兴趣的可以详细看看
+        // 缓存文件路径：
         this.metaCacheManager = new MetaCacheManager(
                 localCacheEnabled,
                 getCacheNameSuffix(),
@@ -149,15 +156,18 @@ public abstract class AbstractServiceDiscovery implements ServiceDiscovery {
             return;
         }
         if (this.serviceInstance == null) {
+            // 创建应用的实例信息等待下面注册到注册中心
             ServiceInstance serviceInstance = createServiceInstance(this.metadataInfo);
             if (!isValidInstance(serviceInstance)) {
                 return;
             }
             this.serviceInstance = serviceInstance;
         }
+        // 开始创建版本号来判断是否需要更新。对应AbstractServiceDiscovery类型的calOrUpdateInstanceRevision
         boolean revisionUpdated = calOrUpdateInstanceRevision(this.serviceInstance);
         if (revisionUpdated) {
             reportMetadata(this.metadataInfo);
+            // 用的实例信息注册到注册中心之上
             doRegister(this.serviceInstance);
         }
     }
@@ -356,17 +366,35 @@ public abstract class AbstractServiceDiscovery implements ServiceDiscovery {
 
     protected abstract void doDestroy() throws Exception;
 
+    /**
+     * 这个方法的主要目的就是将应用的元数据信息都封装到 ServiceInstance 类型中，
+     * 不过额外提供了一个扩展性比较好的方法可以自定义元数据信息
+     * @param metadataInfo
+     * @return
+     */
     protected ServiceInstance createServiceInstance(MetadataInfo metadataInfo) {
         DefaultServiceInstance instance = new DefaultServiceInstance(serviceName, applicationModel);
+        // 应用服务的元数据，可以看下面 debug 的数据信息
         instance.setServiceMetadata(metadataInfo);
+        // metadataType的值为 local，这个方法是将元数据类型存储到应用的元数据对象中，对应内容为dubbo.metadata.storage-type:local
         setMetadataStorageType(instance, metadataType);
+        // 这个是自定义元数据数据，我们也可以通过实现扩展 ServiceInstanceCustomizer 来自定义一些元数据
         ServiceInstanceMetadataUtils.customizeInstance(instance, applicationModel);
         return instance;
     }
 
     protected boolean calOrUpdateInstanceRevision(ServiceInstance instance) {
+        // 获取元数据版本号对应字段 dubbo.metadata.revision
         String existingInstanceRevision = getExportedServicesRevision(instance);
+        // 获取实例的服务元数据信
         MetadataInfo metadataInfo = instance.getServiceMetadata();
+        // 必须在不同线程之间同步计算此实例的状态，如同一实例的修订和修改。
+        // 此方法的使用仅限于某些点，例如在注册期间。始终尝试使用此选项。改为getRevision()。
+
+        // 这个方法其实比较重要，决定了什么时候会更新元数据，
+        // Dubbo 使用了一种 Hash 验证的方式将元数据转 MD5 值与之前的存在的版本号（也是元数据转MD5得到的）
+        // 如果数据发生了变更则MD5值会发生变化，以此来更新元数据，不过发生了MD5冲突的话就会导致配置不更新这个冲突的概率非常小。
+        // 好了直接来看代码吧：MetadataInfo类型的calAndGetRevision方法：
         String newRevision = metadataInfo.calAndGetRevision();
         if (!newRevision.equals(existingInstanceRevision)) {
             instance.getMetadata().put(EXPORTED_SERVICES_REVISION_PROPERTY_NAME, metadataInfo.getRevision());
@@ -382,6 +410,7 @@ public abstract class AbstractServiceDiscovery implements ServiceDiscovery {
         if (metadataReport != null) {
             SubscriberMetadataIdentifier identifier =
                     new SubscriberMetadataIdentifier(serviceName, metadataInfo.getRevision());
+            // 是否远程发布元数据
             if ((DEFAULT_METADATA_STORAGE_TYPE.equals(metadataType) && metadataReport.shouldReportMetadata())
                     || REMOTE_METADATA_STORAGE_TYPE.equals(metadataType)) {
                 MetricsEventBus.post(MetadataEvent.toPushEvent(applicationModel), () -> {

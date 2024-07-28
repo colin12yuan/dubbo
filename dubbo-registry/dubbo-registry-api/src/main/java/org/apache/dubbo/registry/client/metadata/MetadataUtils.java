@@ -58,6 +58,7 @@ public class MetadataUtils {
 
     public static void publishServiceDefinition(
             URL url, ServiceDescriptor serviceDescriptor, ApplicationModel applicationModel) {
+        // 查询是否存在元数据存储对象对应接口 MetadataReport。这里元数据中心使用 zookeeper 则对应实现类 ZookeeperMetadataReport
         if (getMetadataReports(applicationModel).size() == 0) {
             String msg =
                     "Remote Metadata Report Server is not provided or unavailable, will stop registering service definition to remote center!";
@@ -67,8 +68,13 @@ public class MetadataUtils {
 
         try {
             String side = url.getSide();
+            // 服务提供者
             if (PROVIDER_SIDE.equalsIgnoreCase(side)) {
+                // 如服务提供者 url：dubbo://192.168.200.1:20880/org.apache.dubbo.demo
+                // .DemoService?anyhost=true&application=dubbo-demo-api-provider&background=false&bind.ip=192.168.200.1&bind.port=20880&deprecated=false&dubbo=2.0.2&dynamic=true&executor-management-mode=isolation&file-cache=true&generic=false&interface=org.apache.dubbo.demo.DemoService&methods=sayHello,sayHelloAsync&pid=81729&prefer.serialization=fastjson2,hessian2&service-name-mapping=true&side=provider&timestamp=1722068588465
+                // 对应的 serviceKey: org.apache.dubbo.demo.DemoService
                 String serviceKey = url.getServiceKey();
+                // 获取当前服务元数据信息
                 FullServiceDefinition serviceDefinition = serviceDescriptor.getFullServiceDefinition(serviceKey);
 
                 if (StringUtils.isNotEmpty(serviceKey) && serviceDefinition != null) {
@@ -80,6 +86,7 @@ public class MetadataUtils {
                             logger.info("Report of service definition is disabled for " + entry.getKey());
                             continue;
                         }
+                        // 存储服务提供者的元数据 metadataReport 类型
                         metadataReport.storeProviderMetadata(
                                 new MetadataIdentifier(
                                         url.getServiceInterface(),

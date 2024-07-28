@@ -316,6 +316,7 @@ public abstract class AbstractMetadataReport implements MetadataReport {
     @Override
     public void storeProviderMetadata(
             MetadataIdentifier providerMetadataIdentifier, ServiceDefinition serviceDefinition) {
+        // 是否同步配置对应 sync-report，默认为异步
         if (syncReport) {
             storeProviderMetadataTask(providerMetadataIdentifier, serviceDefinition);
         } else {

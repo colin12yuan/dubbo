@@ -203,10 +203,16 @@ public class ServiceInstanceMetadataUtils {
         return null;
     }
 
+    /**
+     * 通过次方法进行服务实例数据和元数据的注册
+     * @param applicationModel
+     */
     public static void registerMetadataAndInstance(ApplicationModel applicationModel) {
         LOGGER.info("Start registering instance address to registry.");
         RegistryManager registryManager = applicationModel.getBeanFactory().getBean(RegistryManager.class);
         // register service instance
+        // AbstractRegistryFactory#getRegistry 时获取通过 registryManager 对生成的 registry 进行缓存。
+        // registryManager#getServiceDiscoveries 注意这里服务发现的类型只有 ServiceDiscoveryRegistry 类型的注册协议才满足
         List<ServiceDiscovery> serviceDiscoveries = registryManager.getServiceDiscoveries();
         for (ServiceDiscovery serviceDiscovery : serviceDiscoveries) {
             MetricsEventBus.post(

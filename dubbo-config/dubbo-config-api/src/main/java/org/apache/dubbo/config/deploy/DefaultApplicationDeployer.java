@@ -798,6 +798,7 @@ public class DefaultApplicationDeployer extends AbstractDeployer<ApplicationMode
 
     @Override
     public void prepareApplicationInstance() {
+        // 已经注册过应用实例数据了，直接返回 （下面CAS逻辑判断了）
         if (hasPreparedApplicationInstance.get()) {
             return;
         }
@@ -805,10 +806,14 @@ public class DefaultApplicationDeployer extends AbstractDeployer<ApplicationMode
         // export MetricsService
         exportMetricsService();
 
+        // 注册开关控制默认为true
+        // 通过将registerConsumer默认设置为“false”来关闭纯使用者进程实例的注册。
         if (isRegisterConsumerInstance()) {
+            // 导出元数据服务
             exportMetadataService();
             if (hasPreparedApplicationInstance.compareAndSet(false, true)) {
                 // register the local ServiceInstance if required
+                // 导出元数据服务之后，也会调用一行代码来注册应用级数据来保证应用上线
                 registerServiceInstance();
             }
         }
@@ -997,9 +1002,14 @@ public class DefaultApplicationDeployer extends AbstractDeployer<ApplicationMode
      */
     private final AtomicInteger serviceRefreshState = new AtomicInteger(0);
 
+    /**
+     * 这个方法先将应用元数据注册到注册中心，然后开始开启定时器每隔30秒同步一次元数据向注册中心。
+     */
     private void registerServiceInstance() {
         try {
+            // 标记变量设置为true
             registered = true;
+            // 通过此方法，进行服务实例数据和元数据的注册
             ServiceInstanceMetadataUtils.registerMetadataAndInstance(applicationModel);
         } catch (Exception e) {
             logger.error(
@@ -1179,9 +1189,11 @@ public class DefaultApplicationDeployer extends AbstractDeployer<ApplicationMode
 
     @Override
     public void notifyModuleChanged(ModuleModel moduleModel, DeployState state) {
+        // 根据所有模块的状态来判断应用发布器的状态
         checkState(moduleModel, state);
 
         // notify module state changed or module changed
+        // 通知所有模块状态更新
         synchronized (stateLock) {
             stateLock.notifyAll();
         }
@@ -1190,9 +1202,11 @@ public class DefaultApplicationDeployer extends AbstractDeployer<ApplicationMode
     @Override
     public void checkState(ModuleModel moduleModel, DeployState moduleState) {
         synchronized (stateLock) {
+            // 非内部模块，并且模块的状态是发布成功
             if (!moduleModel.isInternal() && moduleState == DeployState.STARTED) {
                 prepareApplicationInstance();
             }
+            // 应用下所有模块状态进行汇总计算
             DeployState newState = calculateState();
             switch (newState) {
                 case STARTED:
@@ -1302,9 +1316,13 @@ public class DefaultApplicationDeployer extends AbstractDeployer<ApplicationMode
         if (!isStarting()) {
             return;
         }
+        /*
+         * ExporterDeployListener 会发布元数据服务
+         */
         for (DeployListener<ApplicationModel> listener : listeners) {
             try {
                 if (listener instanceof ApplicationDeployListener) {
+                    // 回调监听器的模块启动成功方法
                     ((ApplicationDeployListener) listener).onModuleStarted(applicationModel);
                 }
             } catch (Throwable e) {

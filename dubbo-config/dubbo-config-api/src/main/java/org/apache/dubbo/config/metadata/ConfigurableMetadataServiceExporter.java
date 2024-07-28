@@ -57,22 +57,31 @@ public class ConfigurableMetadataServiceExporter {
     }
 
     public synchronized ConfigurableMetadataServiceExporter export() {
+        // 元数据服务配置已经存在或者已经导出或者不可导出情况下是无需导出的
         if (serviceConfig == null || !isExported()) {
             ExecutorService internalServiceExecutor = applicationModel
                     .getFrameworkModel()
                     .getBeanFactory()
                     .getBean(FrameworkExecutorRepository.class)
                     .getInternalServiceExecutor();
+            // 创建服务配置
+            /* 这个元数据服务对象有几个比较特殊的配置
+             * 1、注册中心的配置register设置为了false 则为不向注册中心注册具体的服务配置信息
+             */
             this.serviceConfig = InternalServiceConfigBuilder.<MetadataService>newBuilder(applicationModel)
                     .interfaceClass(MetadataService.class)
                     .protocol(getApplicationConfig().getMetadataServiceProtocol(), METADATA_SERVICE_PROTOCOL_KEY)
                     .port(getApplicationConfig().getMetadataServicePort(), METADATA_SERVICE_PORT_KEY)
                     .registryId("internal-metadata-registry")
                     .executor(internalServiceExecutor)
+                    // 这里见传入参数：这里为 MetadataServiceDelegation
                     .ref(metadataService)
+                    // 见 build 实现，生成方法配置。这里目前提供的服务方法为 getAndListenInstanceMetadata 方法。
+                    // 即通过 MetadataServiceDelegation#getAndListenInstanceMetadata
                     .build(configConsumer -> configConsumer.setMethods(generateMethodConfig()));
 
             // export
+            // 导出服务
             serviceConfig.export();
 
             metadataService.setMetadataURL(serviceConfig.getExportedUrls().get(0));

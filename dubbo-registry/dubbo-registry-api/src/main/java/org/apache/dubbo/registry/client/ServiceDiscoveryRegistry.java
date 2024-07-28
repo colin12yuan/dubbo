@@ -93,7 +93,7 @@ public class ServiceDiscoveryRegistry extends FailbackRegistry {
         super(registryURL);
         // 根据url创建一个服务发现对象类型为ServiceDiscovery
         this.serviceDiscovery = createServiceDiscovery(registryURL);
-        // 这个类型为是serviceNameMapping类型是MetadataServiceNameMapping类型
+        // 服务映射类型：这个类型为是 serviceNameMapping 类型是 MetadataServiceNameMapping 类型
         this.serviceNameMapping =
                 (AbstractServiceNameMapping) ServiceNameMapping.getDefaultExtension(registryURL.getScopeModel());
         super.applicationModel = applicationModel;
@@ -104,6 +104,7 @@ public class ServiceDiscoveryRegistry extends FailbackRegistry {
             URL registryURL, ServiceDiscovery serviceDiscovery, ServiceNameMapping serviceNameMapping) {
         super(registryURL);
         this.serviceDiscovery = serviceDiscovery;
+        // 服务映射主要是通过服务名字来反查应用信息的应用名字
         this.serviceNameMapping = (AbstractServiceNameMapping) serviceNameMapping;
     }
 

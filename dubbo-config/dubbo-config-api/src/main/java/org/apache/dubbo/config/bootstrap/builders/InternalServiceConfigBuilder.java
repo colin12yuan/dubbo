@@ -257,6 +257,7 @@ public class InternalServiceConfigBuilder<T> {
     }
 
     public ServiceConfig<T> build(Consumer<ServiceConfig<T>> configConsumer) {
+        // 协议中心配置
         ProtocolConfig protocolConfig = new ProtocolConfig();
         protocolConfig.setName(this.protocol);
         protocolConfig.setPort(this.port);
@@ -270,23 +271,24 @@ public class InternalServiceConfigBuilder<T> {
                 .getApplicationConfigManager()
                 .getProtocol(this.protocol)
                 .ifPresent(protocolConfig::mergeProtocol);
-
+        // 获取当前的应用配置 然后初始化应用配置
         ApplicationConfig applicationConfig = getApplicationConfig();
-
+        // 创建域模型
         ServiceConfig<T> serviceConfig = new ServiceConfig<>();
         serviceConfig.setScopeModel(applicationModel.getInternalModule());
         serviceConfig.setApplication(applicationConfig);
-
+        // 创建注册中心配置对象，然后并初始化
         RegistryConfig registryConfig = new RegistryConfig();
         registryConfig.refresh();
         registryConfig.setNeedRefresh(false);
         registryConfig.setId(this.registryId);
         registryConfig.setAddress("N/A");
         registryConfig.setScopeModel(this.applicationModel);
-
+        // 设置注册中心配置
         serviceConfig.setRegistry(registryConfig);
 
         serviceConfig.setRegister(false);
+        // 生成协议配置，这里会配置一下元数据使用的服务端口号默认使用其他服务的端口20880
         serviceConfig.setProtocol(protocolConfig);
         serviceConfig.setDelay(0);
         serviceConfig.setInterface(interfaceClass);
