@@ -796,6 +796,11 @@ public class DefaultApplicationDeployer extends AbstractDeployer<ApplicationMode
         }
     }
 
+    /**
+     * prepareApplicationInstance() 方法是 Dubbo 应用启动过程中非常重要的一步，
+     * 它完成了应用实例的准备工作，包括导出必要的服务以及注册实例信息，
+     * 为后续的服务调用和治理奠定了基础。
+     */
     @Override
     public void prepareApplicationInstance() {
         // 已经注册过应用实例数据了，直接返回 （下面CAS逻辑判断了）
@@ -804,16 +809,22 @@ public class DefaultApplicationDeployer extends AbstractDeployer<ApplicationMode
         }
 
         // export MetricsService
+        // 导出 Metrics 服务，用于监控 Dubbo 应用的运行状态
         exportMetricsService();
 
         // 注册开关控制默认为true
-        // 通过将registerConsumer默认设置为“false”来关闭纯使用者进程实例的注册。
+        // 通过将 registerConsumer 设置为 'false' 来关闭纯 Consumer 进程的实例注册，默认情况下为 true。
+        // 判断是否需要注册 Consumer 实例：判断当前应用是否需要注册 Consumer 实例信息。
+        // 默认情况下，只有 Provider 应用才会注册实例信息，而纯 Consumer 应用不会注册。
         if (isRegisterConsumerInstance()) {
-            // 导出元数据服务
+            // 导出元数据服务。用于提供服务发现和治理相关信息。
             exportMetadataService();
+            // 保证只注册一次 ServiceInstance
             if (hasPreparedApplicationInstance.compareAndSet(false, true)) {
                 // register the local ServiceInstance if required
                 // 导出元数据服务之后，也会调用一行代码来注册应用级数据来保证应用上线
+                // 将当前应用注册到注册中心，以便其他应用发现和调用
+                // 如在 zookeeper 注册中心：/services/dubbo-demo-api-provider/应用Ip:端口
                 registerServiceInstance();
             }
         }

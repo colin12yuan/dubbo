@@ -341,9 +341,9 @@ public abstract class AbstractMetadataReport implements MetadataReport {
                         allMetadataReports.put(providerMetadataIdentifier, serviceDefinition);
                         failedReports.remove(providerMetadataIdentifier);
                         String data = JsonUtils.toJson(serviceDefinition);
-                        // 内存中的元数据同步到元数据中心
+                        // 内存中的服务定义元数据同步到元数据中心
                         doStoreProviderMetadata(providerMetadataIdentifier, data);
-                        // 内存中的元数据同步到本地文件
+                        // 内存中的服务定义元数据同步到本地文件
                         saveProperties(providerMetadataIdentifier, data, true, !syncReport);
                     } catch (Exception e) {
                         // retry again. If failed again, throw exception.

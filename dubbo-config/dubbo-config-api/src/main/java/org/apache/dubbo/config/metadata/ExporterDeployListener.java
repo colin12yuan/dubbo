@@ -87,11 +87,12 @@ public class ExporterDeployListener implements ApplicationDeployListener, Priori
              * local - Provider 把 metadata 放在本地，Consumer 从 Provider 处直接获取 。
              * 可以看到默认的local配置元数据信息的获取是由消费者从提供者拉的，
              * 那提供者怎么拉取对应服务的元数据信息那就要要用到这个博客说到的MetadataService服务，
-             * 传递方式为 remote 的方式其实就要依赖元数据中心了相对来说增加了元数据中心的压力 */
+             * 传递方式为 remote 的方式其实就要依赖注册中心了相对来说增加了注册中心的压力 */
             // 默认我们是没有配置这个元数据类型的，这里元数据类型默认为 local，条件不是 remote 则处理
             // 注册模式：若是接口级注册模式，则不需要元数据中心暴露服务元数据信息。接口注册模式为 dubbo 2.6.x 及以前注册方式。
             if (!REMOTE_METADATA_STORAGE_TYPE.equals(getMetadataType(applicationModel))
                     && !INTERFACE_REGISTER_MODE.equals(getRegisterMode(applicationModel))) {
+                // 元数据服务导出
                 metadataServiceExporter.export();
             }
         }

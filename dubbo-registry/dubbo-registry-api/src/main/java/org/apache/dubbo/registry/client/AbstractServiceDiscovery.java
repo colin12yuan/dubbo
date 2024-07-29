@@ -84,7 +84,7 @@ public abstract class AbstractServiceDiscovery implements ServiceDiscovery {
         // 调用重载的构造器
         this(applicationModel, applicationModel.getApplicationName(), registryURL);
 
-        //
+        // 元数据上报器
         MetadataReportInstance metadataReportInstance =
                 applicationModel.getBeanFactory().getBean(MetadataReportInstance.class);
         metadataType = metadataReportInstance.getMetadataType();
@@ -167,7 +167,7 @@ public abstract class AbstractServiceDiscovery implements ServiceDiscovery {
         boolean revisionUpdated = calOrUpdateInstanceRevision(this.serviceInstance);
         if (revisionUpdated) {
             reportMetadata(this.metadataInfo);
-            // 用的实例信息注册到注册中心之上
+            // 应用的实例信息注册到注册中心之上
             doRegister(this.serviceInstance);
         }
     }
