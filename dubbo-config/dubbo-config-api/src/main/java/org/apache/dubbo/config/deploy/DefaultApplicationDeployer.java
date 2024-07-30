@@ -1044,6 +1044,7 @@ public class DefaultApplicationDeployer extends AbstractDeployer<ApplicationMode
 
                                 // refresh for 30 times (default for 30s) when deployer is not started, prevent submit
                                 // too many revision
+                                // 停止等待，需要等发布器启动完成，再走后续逻辑。
                                 if (instanceRefreshScheduleTimes.incrementAndGet() % 30 != 0 && !isStarted()) {
                                     return;
                                 }
@@ -1221,6 +1222,7 @@ public class DefaultApplicationDeployer extends AbstractDeployer<ApplicationMode
             DeployState newState = calculateState();
             switch (newState) {
                 case STARTED:
+                    // 所有模块启动完成后，更新为已启动
                     onStarted();
                     break;
                 case STARTING:

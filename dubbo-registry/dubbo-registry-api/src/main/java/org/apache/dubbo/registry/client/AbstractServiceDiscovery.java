@@ -166,6 +166,7 @@ public abstract class AbstractServiceDiscovery implements ServiceDiscovery {
         // 开始创建版本号来判断是否需要更新。对应AbstractServiceDiscovery类型的calOrUpdateInstanceRevision
         boolean revisionUpdated = calOrUpdateInstanceRevision(this.serviceInstance);
         if (revisionUpdated) {
+            // 服务发现：接口配置元数据
             reportMetadata(this.metadataInfo);
             // 应用的实例信息注册到注册中心之上
             doRegister(this.serviceInstance);
@@ -388,15 +389,14 @@ public abstract class AbstractServiceDiscovery implements ServiceDiscovery {
         String existingInstanceRevision = getExportedServicesRevision(instance);
         // 获取实例的服务元数据信
         MetadataInfo metadataInfo = instance.getServiceMetadata();
-        // 必须在不同线程之间同步计算此实例的状态，如同一实例的修订和修改。
-        // 此方法的使用仅限于某些点，例如在注册期间。始终尝试使用此选项。改为getRevision()。
-
         // 这个方法其实比较重要，决定了什么时候会更新元数据，
+        // 必须在不同线程之间同步计算此实例的状态，如同一实例的修订和修改。
+        // 此方法的使用仅限于某些点，例如在注册期间。始终尝试使用此选项。
         // Dubbo 使用了一种 Hash 验证的方式将元数据转 MD5 值与之前的存在的版本号（也是元数据转MD5得到的）
         // 如果数据发生了变更则MD5值会发生变化，以此来更新元数据，不过发生了MD5冲突的话就会导致配置不更新这个冲突的概率非常小。
-        // 好了直接来看代码吧：MetadataInfo类型的calAndGetRevision方法：
         String newRevision = metadataInfo.calAndGetRevision();
         if (!newRevision.equals(existingInstanceRevision)) {
+            // 版本号添加到 dubbo.metadata.revision 字段中
             instance.getMetadata().put(EXPORTED_SERVICES_REVISION_PROPERTY_NAME, metadataInfo.getRevision());
             return true;
         }
@@ -407,10 +407,14 @@ public abstract class AbstractServiceDiscovery implements ServiceDiscovery {
         if (metadataInfo == null) {
             return;
         }
+        /**
+         * `remote` - `Provider` 把 metadata 放到远端元数据中心，Consumer 从注册中心获取。
+         * `local` - `Provider` 把 metadata 放在本地，Consumer 从 Provider 处直接获取 。
+         */
         if (metadataReport != null) {
             SubscriberMetadataIdentifier identifier =
                     new SubscriberMetadataIdentifier(serviceName, metadataInfo.getRevision());
-            // 是否远程发布元数据
+            // 是否远程发布元数据数据中心。服务发现：接口配置元数据
             if ((DEFAULT_METADATA_STORAGE_TYPE.equals(metadataType) && metadataReport.shouldReportMetadata())
                     || REMOTE_METADATA_STORAGE_TYPE.equals(metadataType)) {
                 MetricsEventBus.post(MetadataEvent.toPushEvent(applicationModel), () -> {
