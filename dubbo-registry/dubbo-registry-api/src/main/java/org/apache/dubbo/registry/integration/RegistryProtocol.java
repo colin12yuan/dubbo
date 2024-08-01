@@ -546,6 +546,8 @@ public class RegistryProtocol implements Protocol, ScopeModelAware {
     @Override
     @SuppressWarnings("unchecked")
     public <T> Invoker<T> refer(Class<T> type, URL url) throws RpcException {
+        // register协议时，这里获取的这个 url 已经被转换为具体的注册中心协议类型了。
+        // register 协议实际执行的是 InterfaceCompatibleRegistryProtocol#getRegistryUrl
         url = getRegistryUrl(url);
         Registry registry = getRegistry(url);
         if (RegistryService.class.equals(type)) {
@@ -561,7 +563,10 @@ public class RegistryProtocol implements Protocol, ScopeModelAware {
             }
         }
 
+        // 降级容错的逻辑处理对象 类型为Cluster 实际类型为MockClusterWrapper 内部包装的是FailoverCluster
+        // 集群容错策略，后续调用服务失败时候会先失效转移再降级
         Cluster cluster = Cluster.getCluster(url.getScopeModel(), qs.get(CLUSTER_KEY));
+        // 这里才是具体的Invoker对象的创建
         return doRefer(cluster, registry, type, url, qs);
     }
 
@@ -580,7 +585,10 @@ public class RegistryProtocol implements Protocol, ScopeModelAware {
                 parameters,
                 consumerAttribute);
         url = url.putAttribute(CONSUMER_URL_KEY, consumerUrl);
+        // 重点看这一行 带迁移性质的Invoker对象
+        // 这个方法创建了一个支持迁移的 Invoker。它可能包含了处理服务发现迁移的逻辑，允许在不同的服务发现策略之间切换。
         ClusterInvoker<T> migrationInvoker = getMigrationInvoker(this, cluster, registry, type, url, consumerUrl);
+        // 这一行回来执行迁移规则创建应用级优先的服务发现Invoker对象
         return interceptInvoker(migrationInvoker, url, consumerUrl);
     }
 
@@ -611,6 +619,7 @@ public class RegistryProtocol implements Protocol, ScopeModelAware {
      * @return The @param MigrationInvoker passed in
      */
     protected <T> Invoker<T> interceptInvoker(ClusterInvoker<T> invoker, URL url, URL consumerUrl) {
+        // 目前存在的扩展类型为RegistryProtocolListener监听器的实现类型MigrationRuleListener
         List<RegistryProtocolListener> listeners = findRegistryProtocolListeners(url);
         if (CollectionUtils.isEmpty(listeners)) {
             return invoker;

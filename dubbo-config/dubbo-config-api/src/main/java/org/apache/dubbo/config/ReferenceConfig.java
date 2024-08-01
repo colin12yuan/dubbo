@@ -232,6 +232,12 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
                 getScopeModel().getDeployer().prepare();
             } else {
                 // ensure start module, compatible with old api usage
+                // 确保模块启动。兼容历史 API 处理
+                // 这个前面已经调用了模块发布器启动过了，这里有这么一行代码是有一定作用的，
+                // 如果使用方直接调用了ReferenceConfigBase的get方法或者缓存对象SimpleReferenceCache
+                // 类型的对象的get方法来引用服务端的时候就会造成很多配置没有初始化下面执行逻辑的时候出现问题，
+                // 这个代码其实就是启动模块进行一些基础配置的初始化操作.
+                // 比如元数据中心默认配置选择，注册中心默认配置选择这些都是比较重要的
                 getScopeModel().getDeployer().start();
             }
 
@@ -319,11 +325,13 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
     }
 
     protected synchronized void init(boolean check) {
+        // 初始化标记变量保证只初始化一次
         if (initialized && ref != null) {
             return;
         }
         try {
             if (!this.isRefreshed()) {
+                // 刷新配置
                 this.refresh();
             }
             // auto detect proxy type
@@ -333,12 +341,13 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
             }
 
             // init serviceMetadata
+            // 初始化 ServiceMetadata 类型对象，serviceMetadata 为其设置服务基本属性比如版本号，分组，服务接口名
             initServiceMetadata(consumer);
 
             serviceMetadata.setServiceType(getServiceInterfaceClass());
             // TODO, uncomment this line once service key is unified
             serviceMetadata.generateServiceKey();
-
+            // 配置转 Map 类型
             Map<String, String> referenceParameters = appendConfig();
 
             ModuleServiceRepository repository = getScopeModel().getServiceRepository();
@@ -348,8 +357,10 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
                 repository.registerService(serviceDescriptor);
                 setInterface(serviceDescriptor.getInterfaceName());
             } else {
+                // 本地存储库注册服务接口类型
                 serviceDescriptor = repository.registerService(interfaceClass);
             }
+            // 消费者模型对象
             consumerModel = new ConsumerModel(
                     serviceMetadata.getServiceKey(),
                     proxy,
@@ -364,11 +375,11 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
             consumerModel.setConfig(this);
 
             repository.registerConsumer(consumerModel);
-
+            // 与前面代码一样基础初始化服务元数据对象为其设置附加参数
             serviceMetadata.getAttachments().putAll(referenceParameters);
-
+            // 创建服务的代理对象 ！！！核心代码在这里
             ref = createProxy(referenceParameters);
-
+            // 为服务元数据对象设置代理对象
             serviceMetadata.setTarget(ref);
             serviceMetadata.addAttribute(PROXY_CLASS_REF, ref);
 
@@ -377,6 +388,7 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
             consumerModel.initMethodModels();
 
             if (check) {
+                // 检查 invoker 对象初始结果
                 checkInvokerAvailable(0);
             }
         } catch (Throwable t) {
@@ -472,17 +484,24 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
 
     @SuppressWarnings({"unchecked"})
     private T createProxy(Map<String, String> referenceParameters) {
+        // 清除先前存储的URL列表，确保从新开始构建URL
+        // 该列表用于存储从不同途径获取的服务提供者 URL 地址。
         urls.clear();
-
+        // 处理 Mesh 模式下的 URL 地址。Mesh 模式是 Dubbo3 提供的一种服务治理方案，可以实现更灵活的流量管理。
+        // 这通常涉及到处理Mesh网络环境下的URL配置
         meshModeHandleUrl(referenceParameters);
 
         if (StringUtils.isNotEmpty(url)) {
             // user specified URL, could be peer-to-peer address, or register center's address.
+            // 如果用户指定了URL，这个URL可能是点对点地址，或者是注册中心的地址
             parseUrl(referenceParameters);
         } else {
             // if protocols not in jvm checkRegistry
+            //  从注册中心获取服务提供者的 URL 地址并将其聚合。这个其实就是初始化一下注册中心的url配置
             aggregateUrlFromRegistry(referenceParameters);
         }
+
+        // 创建服务调用器
         createInvoker();
 
         if (logger.isInfoEnabled()) {
@@ -500,9 +519,11 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
                 referenceParameters);
         consumerUrl = consumerUrl.setScopeModel(getScopeModel());
         consumerUrl = consumerUrl.setServiceModel(consumerModel);
+        // 发布服务定义到元数据中心
         MetadataUtils.publishServiceDefinition(consumerUrl, consumerModel.getServiceModel(), getApplicationModel());
 
         // create service proxy
+        // 创建服务代理
         return (T) proxyFactory.getProxy(invoker, ProtocolUtils.isGeneric(generic));
     }
 
@@ -655,6 +676,7 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
             URL curUrl = urls.get(0);
             invoker = protocolSPI.refer(interfaceClass, curUrl);
             // registry url, mesh-enable and unloadClusterRelated is true, not need Cluster.
+            // 如果当前URL不是注册中心URL，并且不需要卸载集群相关的内容，则加入集群
             if (!UrlUtils.isRegistry(curUrl) && !curUrl.getParameter(UNLOAD_CLUSTER_RELATED, false)) {
                 List<Invoker<?>> invokers = new ArrayList<>();
                 invokers.add(invoker);
@@ -667,6 +689,8 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
             for (URL url : urls) {
                 // For multi-registry scenarios, it is not checked whether each referInvoker is available.
                 // Because this invoker may become available later.
+                // 多注册中心场景下，不检查每个referInvoker是否可用
+                // 因为这些Invoker可能稍后会变得可用
                 invokers.add(protocolSPI.refer(interfaceClass, url));
 
                 if (UrlUtils.isRegistry(url)) {

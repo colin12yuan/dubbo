@@ -47,18 +47,21 @@ public class MigrationRuleHandler<T> {
             return;
         }
 
+        // 迁移步骤，MigrationStep 一共有3种枚举情况：FORCE_INTERFACE, APPLICATION_FIRST, FORCE_APPLICATION
         // initial step : APPLICATION_FIRST
         MigrationStep step = MigrationStep.APPLICATION_FIRST;
         float threshold = -1f;
 
         try {
+            // 获取配置的类型 默认走APPLICATION_FIRST
             step = rule.getStep(consumerURL);
+            // threshold: 决策阈值（默认-1.0）计算与获取
             threshold = rule.getThreshold(consumerURL);
         } catch (Exception e) {
             logger.error(
                     REGISTRY_NO_PARAMETERS_URL, "", "", "Failed to get step and threshold info from rule: " + rule, e);
         }
-
+        // 刷洗调用器对象 来进行决策服务发现模式
         if (refreshInvoker(step, threshold, rule)) {
             // refresh success, update rule
             setMigrationRule(rule);
@@ -75,12 +78,15 @@ public class MigrationRuleHandler<T> {
             boolean success = true;
             switch (step) {
                 case APPLICATION_FIRST:
+                    // 默认和配置了应用级优先的服务发现则走这里
                     migrationInvoker.migrateToApplicationFirstInvoker(newRule);
                     break;
                 case FORCE_APPLICATION:
+                    // 配置了应用级服务发现则走这里
                     success = migrationInvoker.migrateToForceApplicationInvoker(newRule);
                     break;
                 case FORCE_INTERFACE:
+                    // 配置了接口级服务发现则走这里
                 default:
                     success = migrationInvoker.migrateToForceInterfaceInvoker(newRule);
             }

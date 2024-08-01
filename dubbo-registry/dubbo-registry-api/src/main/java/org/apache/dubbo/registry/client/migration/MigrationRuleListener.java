@@ -276,12 +276,14 @@ public class MigrationRuleListener implements RegistryProtocolListener, Configur
     @Override
     public void onRefer(
             RegistryProtocol registryProtocol, ClusterInvoker<?> invoker, URL consumerUrl, URL registryURL) {
+        // 创建一个对应invoker对象的MigrationRuleHandler类型对象 然后将其存放在缓存Map<MigrationInvoker,
+        // MigrationRuleHandler>类型对象handles中
         MigrationRuleHandler<?> migrationRuleHandler =
                 ConcurrentHashMapUtils.computeIfAbsent(handlers, (MigrationInvoker<?>) invoker, _key -> {
                     ((MigrationInvoker<?>) invoker).setMigrationRuleListener(this);
                     return new MigrationRuleHandler<>((MigrationInvoker<?>) invoker, consumerUrl);
                 });
-
+        // 迁移规则执行 rule是封装了迁移的配置规则的信息对应类型MigrationRule类型，在初始化对象的时候进行了配置初始化
         migrationRuleHandler.doMigrate(rule);
     }
 

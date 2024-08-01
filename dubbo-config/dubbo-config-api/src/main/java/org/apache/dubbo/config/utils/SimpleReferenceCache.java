@@ -113,15 +113,19 @@ public class SimpleReferenceCache implements ReferenceCache {
     @Override
     @SuppressWarnings("unchecked")
     public <T> T get(ReferenceConfigBase<T> rc, boolean check) {
+        // 这个生成的key 规则是这样的 服务分组/服务接口:版本号
         String key = generator.generateKey(rc);
+        // 服务类型。如果是泛化调用则这个类型为GenericService
         Class<?> type = rc.getInterfaceClass();
-
+        // 服务是否为单例的这里默认值都为空，为单例模式
         boolean singleton = rc.getSingleton() == null || rc.getSingleton();
         T proxy = null;
         // Check existing proxy of the same 'key' and 'type' first.
         if (singleton) {
+            // 一般为单例的。这个方法是从缓存中获取
             proxy = get(key, (Class<T>) type);
         } else {
+            // 非单例容易造成内存泄露，无法从缓存中获取
             logger.warn(
                     CONFIG_API_WRONG_USE,
                     "",
@@ -129,14 +133,17 @@ public class SimpleReferenceCache implements ReferenceCache {
                     "Using non-singleton ReferenceConfig and ReferenceCache at the same time may cause memory leak. "
                             + "Call ReferenceConfig#get() directly for non-singleton ReferenceConfig instead of using ReferenceCache#get(ReferenceConfig)");
         }
-
+        // 前面是从缓存中拿，如果缓存中获取不到则开始引用服务
         if (proxy == null) {
+            // 类型映射
             List<ReferenceConfigBase<?>> referencesOfType = ConcurrentHashMapUtils.computeIfAbsent(
                     referenceTypeMap, type, _t -> Collections.synchronizedList(new ArrayList<>()));
             referencesOfType.add(rc);
+            // key 映射
             List<ReferenceConfigBase<?>> referenceConfigList = ConcurrentHashMapUtils.computeIfAbsent(
                     referenceKeyMap, key, _k -> Collections.synchronizedList(new ArrayList<>()));
             referenceConfigList.add(rc);
+            // 开始引用服务
             proxy = rc.get(check);
         }
 
