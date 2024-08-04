@@ -673,7 +673,13 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
     @SuppressWarnings({"unchecked", "rawtypes"})
     private void createInvoker() {
         if (urls.size() == 1) {
+            // 这个 url 为注册协议 如
+            // registry://[注册中心地址:端口]/org.apache.dubbo.registry
+            // .RegistryService?application=dubbo-demo-api-consumer&dubbo=2.0
+            // .2&executor-management-mode=isolation&file-cache=true&pid=86988&registry=zookeeper&timestamp=1722762889302
+            //  url 属性中包含 refer 相关信息
             URL curUrl = urls.get(0);
+            // 泛化调用时 interfaceClass org.apache.dubbo.rpc.service.GenericService
             invoker = protocolSPI.refer(interfaceClass, curUrl);
             // registry url, mesh-enable and unloadClusterRelated is true, not need Cluster.
             // 如果当前URL不是注册中心URL，并且不需要卸载集群相关的内容，则加入集群
