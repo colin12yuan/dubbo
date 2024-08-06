@@ -680,6 +680,8 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
             //  url 属性中包含 refer 相关信息
             URL curUrl = urls.get(0);
             // 泛化调用时 interfaceClass org.apache.dubbo.rpc.service.GenericService
+            // registry 最终 protocolSPI 经 SPI 调用
+            // org.apache.dubbo.registry.integration.InterfaceCompatibleRegistryProtocol，此对象经过 SPI wrapper 机制包装过
             invoker = protocolSPI.refer(interfaceClass, curUrl);
             // registry url, mesh-enable and unloadClusterRelated is true, not need Cluster.
             // 如果当前URL不是注册中心URL，并且不需要卸载集群相关的内容，则加入集群

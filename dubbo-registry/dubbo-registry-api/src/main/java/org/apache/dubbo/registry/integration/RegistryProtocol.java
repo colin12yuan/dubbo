@@ -546,7 +546,7 @@ public class RegistryProtocol implements Protocol, ScopeModelAware {
     @Override
     @SuppressWarnings("unchecked")
     public <T> Invoker<T> refer(Class<T> type, URL url) throws RpcException {
-        // register协议时，这里获取的这个 url 已经被转换为具体的注册中心协议类型了。
+        // register 协议时，这里获取的这个 url 已经被转换为具体的注册中心协议类型了。
         // register 协议实际执行的是 InterfaceCompatibleRegistryProtocol#getRegistryUrl
         url = getRegistryUrl(url);
         Registry registry = getRegistry(url);
