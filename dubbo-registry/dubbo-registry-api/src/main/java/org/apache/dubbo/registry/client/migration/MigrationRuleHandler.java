@@ -61,7 +61,7 @@ public class MigrationRuleHandler<T> {
             logger.error(
                     REGISTRY_NO_PARAMETERS_URL, "", "", "Failed to get step and threshold info from rule: " + rule, e);
         }
-        // 刷洗调用器对象 来进行决策服务发现模式
+        // 刷新调用器对象，来进行决策服务发现模式
         if (refreshInvoker(step, threshold, rule)) {
             // refresh success, update rule
             setMigrationRule(rule);

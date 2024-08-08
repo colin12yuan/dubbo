@@ -497,7 +497,7 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
             parseUrl(referenceParameters);
         } else {
             // if protocols not in jvm checkRegistry
-            //  从注册中心获取服务提供者的 URL 地址并将其聚合。这个其实就是初始化一下注册中心的url配置
+            // 从注册中心获取服务提供者的 URL 地址并将其聚合。这个其实就是初始化一下注册中心的url配置
             aggregateUrlFromRegistry(referenceParameters);
         }
 
